@@ -18,10 +18,21 @@ const AuditLogSchema = new mongoose.Schema({
     type: String,
     default: 'unknown',
   },
+  userSnapshot: {
+    type: String, // Preserves name/email/role snapshot in case of account deletion
+    required: false,
+  },
   timestamp: {
     type: Date,
     default: Date.now,
   }
 });
 
+// Index for user audit trail queries sorted descending
+AuditLogSchema.index({ userId: 1, timestamp: -1 });
+
+// Global administrator audit log index sorted descending
+AuditLogSchema.index({ timestamp: -1 });
+
 export default mongoose.model('AuditLog', AuditLogSchema);
+

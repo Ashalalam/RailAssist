@@ -82,4 +82,14 @@ const JourneySchema = new mongoose.Schema({
   }
 });
 
+// Primary dashboard query index: user journeys ordered by scheduled departure descending
+JourneySchema.index({ userId: 1, scheduledDeparture: -1 });
+
+// Scoped unique compound index: guarantees offline sync idempotency per user
+JourneySchema.index({ userId: 1, localId: 1 }, { unique: true });
+
+// Timeline & overlap range index: user journeys ordered by actual departure ascending
+JourneySchema.index({ userId: 1, actualDeparture: 1 });
+
 export default mongoose.model('Journey', JourneySchema);
+

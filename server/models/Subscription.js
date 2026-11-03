@@ -28,4 +28,8 @@ const SubscriptionSchema = new mongoose.Schema({
   }
 });
 
+// Index for active user subscription status checks
+SubscriptionSchema.index({ userId: 1, status: 1 });
+
 export default mongoose.model('Subscription', SubscriptionSchema);
+

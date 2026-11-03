@@ -470,24 +470,31 @@ app.post('/api/journeys/sync', authenticateToken, async (req, res) => {
     const rule = await AllowanceRule.findOne({ role: req.user.role }) || { taDailyRate: 800, ndaHourlyRate: 180 };
 
     for (const item of journeys) {
-      // Re-calculate allowances for synced items to ensure server-side compliance
-      const nightDutyHours = calculateNightDutyHours(item.actualDeparture, item.actualArrival);
-      const ndaAmount = nightDutyHours * rule.ndaHourlyRate;
+      if (!item || !item.localId || typeof item.localId !== 'string' || !item.localId.trim()) {
+        continue;
+      }
 
-      const taStart = item.departureFromHq || item.actualDeparture;
-      const taEnd = item.arrivalAtHq || item.actualArrival;
+      // Strip client-side _id and userId to prevent forged IDs or immutable _id mutation
+      const { _id, userId: clientUserId, ...safeItem } = item;
+
+      // Re-calculate allowances authoritatively on server
+      const nightDutyHours = calculateNightDutyHours(safeItem.actualDeparture, safeItem.actualArrival);
+      const ndaAmount = calculateNDA(nightDutyHours, rule.ndaHourlyRate);
+
+      const taStart = safeItem.departureFromHq || safeItem.actualDeparture;
+      const taEnd = safeItem.arrivalAtHq || safeItem.actualArrival;
       const taAmount = calculateTA(taStart, taEnd, rule.taDailyRate);
 
-      // Check if this journey already exists in DB (sync update or recreate)
-      let journey = await Journey.findOne({ localId: item.localId, userId: req.user.id });
-      
       const payload = {
-        ...item,
+        ...safeItem,
         userId: req.user.id,
         nightDutyHours,
         ndaAmount,
         taAmount
       };
+
+      // Check if this journey already exists in DB scoped strictly to user
+      let journey = await Journey.findOne({ localId: safeItem.localId, userId: req.user.id });
 
       if (journey) {
         Object.assign(journey, payload);
@@ -594,13 +601,90 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res
 });
 
 app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUserId = req.params.id;
+
+  // Prevent admin from deleting their own active account
+  if (targetUserId === req.user.id) {
+    return res.status(400).json({ message: 'Administrative safety constraint: You cannot delete your own account.' });
+  }
+
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findById(targetUserId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    await logAction(req.user.id, 'ADMIN_USER_DELETE', `Deleted user account ${user.email}`, req.ip);
-    res.json({ message: 'User account removed' });
+    // Snapshot user details for audit preservation before deletion
+    const userSnapshot = `${user.name} <${user.email}> (${user.role}, Division: ${user.division})`;
+
+    // Check transaction support dynamically
+    let session = null;
+    let useTransaction = false;
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+      useTransaction = true;
+    } catch {
+      useTransaction = false;
+      if (session) {
+        await session.endSession();
+        session = null;
+      }
+    }
+
+    try {
+      const opts = session ? { session } : {};
+
+      // 1. Preserve historical audit trail attribution
+      await AuditLog.updateMany(
+        { userId: user._id },
+        { $set: { userSnapshot } },
+        opts
+      );
+
+      // 2. Cascade delete user operational records
+      const [journeysResult, templatesResult, reportsResult, subsResult] = await Promise.all([
+        Journey.deleteMany({ userId: user._id }, opts),
+        JourneyTemplate.deleteMany({ userId: user._id }, opts),
+        ReportHistory.deleteMany({ userId: user._id }, opts),
+        Subscription.deleteMany({ userId: user._id }, opts)
+      ]);
+
+      // 3. Delete user document
+      await User.findByIdAndDelete(user._id, opts);
+
+      if (useTransaction && session) {
+        await session.commitTransaction();
+      }
+
+      // 4. Log admin audit action with full metadata
+      await logAction(
+        req.user.id,
+        'ADMIN_USER_DELETE',
+        `Safely deleted user ${userSnapshot}. Cascaded ${journeysResult.deletedCount} journeys, ${templatesResult.deletedCount} templates, ${reportsResult.deletedCount} reports, ${subsResult.deletedCount} subscriptions. Preserved audit logs.`,
+        req.ip
+      );
+
+      res.json({
+        success: true,
+        message: 'User account removed',
+        cascaded: {
+          journeys: journeysResult.deletedCount,
+          templates: templatesResult.deletedCount,
+          reports: reportsResult.deletedCount,
+          subscriptions: subsResult.deletedCount
+        }
+      });
+    } catch (innerError) {
+      if (useTransaction && session) {
+        await session.abortTransaction();
+      }
+      throw innerError;
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
   } catch (error) {
+    console.error('[ADMIN ERROR] Safe user deletion failed:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -608,7 +692,19 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
 app.get('/api/admin/audit-logs', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const logs = await AuditLog.find({}).populate('userId', 'name email role').sort({ timestamp: -1 }).limit(100);
-    res.json(logs);
+    // Format logs so that if userId was deleted, the userSnapshot provides historic attribution
+    const formattedLogs = logs.map(log => {
+      const doc = log.toObject();
+      if (!doc.userId && doc.userSnapshot) {
+        doc.userId = {
+          name: doc.userSnapshot,
+          email: 'archived/deleted',
+          role: 'Deleted Official'
+        };
+      }
+      return doc;
+    });
+    res.json(formattedLogs);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

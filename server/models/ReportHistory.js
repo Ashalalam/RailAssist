@@ -38,4 +38,11 @@ const ReportHistorySchema = new mongoose.Schema({
   }
 });
 
+// Index for filtering generated statements by user and month
+ReportHistorySchema.index({ userId: 1, month: 1 });
+
+// Index for user statement history ordered by generation date descending
+ReportHistorySchema.index({ userId: 1, generatedAt: -1 });
+
 export default mongoose.model('ReportHistory', ReportHistorySchema);
+

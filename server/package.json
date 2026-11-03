@@ -10,7 +10,9 @@
     "test:security": "node test_security_suite.mjs",
     "test:timezone": "node test_timezone_suite.mjs",
     "test:regression": "node test_regression_suite.mjs",
-    "test": "node test_security_suite.mjs && node test_timezone_suite.mjs && node test_regression_suite.mjs"
+    "test:integrity": "node test_integrity_suite.mjs",
+    "test:audit": "node scripts/validate_database_integrity.mjs",
+    "test": "node test_security_suite.mjs && node test_timezone_suite.mjs && node test_regression_suite.mjs && node test_integrity_suite.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

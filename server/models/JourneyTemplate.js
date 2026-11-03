@@ -45,4 +45,8 @@ const JourneyTemplateSchema = new mongoose.Schema({
   }
 });
 
+// Index for template retrieval by authenticated user
+JourneyTemplateSchema.index({ userId: 1 });
+
 export default mongoose.model('JourneyTemplate', JourneyTemplateSchema);
+
