@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2dd4bf;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <rect width="512" height="512" rx="128" fill="url(#grad1)" />
+  
+  <!-- Rails Perspective -->
+  <path d="M 120 420 L 220 280 M 392 420 L 292 280" stroke="#475569" stroke-width="8" stroke-linecap="round" />
+  <path d="M 150 380 L 362 380 M 180 340 L 332 340 M 210 300 L 302 300" stroke="#475569" stroke-width="6" stroke-linecap="round" />
+  
+  <!-- Stylized Train Face -->
+  <path d="M 176 180 
+           C 176 130, 210 110, 256 110 
+           C 302 110, 336 130, 336 180 
+           L 326 280 
+           C 326 310, 296 320, 256 320 
+           C 216 320, 186 310, 186 280 
+           Z" fill="url(#grad2)" />
+           
+  <!-- Windshield -->
+  <path d="M 196 170 
+           C 196 140, 216 130, 256 130 
+           C 296 130, 316 140, 316 170 
+           L 308 210 
+           L 204 210 
+           Z" fill="#ffffff" opacity="0.9" />
+           
+  <!-- Headlights -->
+  <circle cx="216" cy="270" r="14" fill="#ffffff" filter="drop-shadow(0px 0px 4px #fff)" />
+  <circle cx="296" cy="270" r="14" fill="#ffffff" filter="drop-shadow(0px 0px 4px #fff)" />
+  
+  <!-- Glowing Nose Chevron -->
+  <path d="M 240 230 L 256 245 L 272 230" fill="none" stroke="#0f172a" stroke-width="4" stroke-linecap="round" />
+</svg>

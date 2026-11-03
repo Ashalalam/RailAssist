@@ -1,0 +1,39 @@
+# Root monorepo .gitignore for RailAssist
+
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+*.env
+server/.env
+server/.env.*
+client/.env
+client/.env.*
+!.env.example
+!server/.env.example
+!client/.env.example
+
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Production build distributions
+client/dist/
+client/dist-ssr/
+
+# User uploads and temporary files
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs and runtime traces
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
