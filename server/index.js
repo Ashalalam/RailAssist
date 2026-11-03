@@ -22,11 +22,15 @@ import AuditLog from './models/AuditLog.js';
 import ReportHistory from './models/ReportHistory.js';
 import JourneyTemplate from './models/JourneyTemplate.js';
 
+import crypto from 'crypto';
+import { JWT_SECRET } from './config/jwt.js';
+import { authenticateToken } from './middleware/auth.js';
+import emailService from './services/emailService.js';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'railassist_secret_key_12345';
 
 // Middleware
 app.use(cors());
@@ -82,19 +86,7 @@ function calculateTA(start, end, dailyRate) {
   return parseFloat(((days * dailyRate) + remainderTA).toFixed(2));
 }
 
-// Middleware: Authenticate JWT Token
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Token invalid or expired' });
-    req.user = user;
-    next();
-  });
-};
 
 // Middleware: Require Admin
 const requireAdmin = async (req, res, next) => {
@@ -222,22 +214,129 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// Forgot Password
-app.post('/api/auth/forgot-password', async (req, res) => {
-  const { email, newPassword } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+// ======================== SECURE PASSWORD RECOVERY FLOW ========================
 
-    user.password = newPassword;
+// Step 1: Request Password Recovery Link
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ message: 'A valid email address is required.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const genericSuccessMessage = 'If an account associated with that email exists, password reset instructions have been dispatched.';
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // Defensive: Return generic response if user not found to prevent user enumeration
+    if (!user) {
+      return res.json({
+        message: genericSuccessMessage,
+        emailDeliveryConfigured: emailService.isConfigured()
+      });
+    }
+
+    // Generate cryptographically random 32-byte token and hash for DB
+    const resetToken = user.getResetPasswordToken();
     await user.save();
 
-    await logAction(user._id, 'PASSWORD_RESET', 'Reset password', req.ip);
-    res.json({ message: 'Password updated successfully' });
+    // Determine client URL origin
+    const clientOrigin = req.headers.origin || req.headers.referer || 'http://localhost:5173';
+    const cleanOrigin = clientOrigin.replace(/\/$/, '');
+    const resetUrl = `${cleanOrigin}/forgot-password?token=${resetToken}`;
+
+    const sendResult = await emailService.sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetUrl,
+      resetToken
+    });
+
+    await logAction(
+      user._id,
+      'PASSWORD_RESET_REQUESTED',
+      `Password reset token issued for ${user.email} (valid 15m) from IP: ${req.ip}`,
+      req.ip
+    );
+
+    const responsePayload = {
+      message: genericSuccessMessage,
+      emailDeliveryConfigured: sendResult.delivered
+    };
+
+    // If email delivery is not configured, supply devResetUrl in non-production for local verification
+    if (!sendResult.delivered && process.env.NODE_ENV !== 'production') {
+      responsePayload.devResetUrl = resetUrl;
+      responsePayload.devToken = resetToken;
+    }
+
+    res.json(responsePayload);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[AUTH ERROR] Forgot password processing failed:', error);
+    res.status(500).json({ message: 'Internal error processing password recovery request.' });
   }
 });
+
+// Step 2: Verify Token and Set New Password
+const handlePasswordReset = async (req, res) => {
+  const token = req.params.token || req.body.token;
+  const { newPassword } = req.body;
+
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ message: 'Password reset token is missing or invalid.' });
+  }
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ message: 'New password must be at least 6 characters long.' });
+  }
+
+  try {
+    // Hash incoming token with SHA-256 to compare against database
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token.trim())
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    }).select('+password +resetPasswordToken +resetPasswordExpire');
+
+    if (!user) {
+      return res.status(400).json({
+        message: 'Password reset token is invalid, expired, or has already been used.'
+      });
+    }
+
+    // Set new password (pre-save hook will hash it with bcrypt)
+    user.password = newPassword;
+
+    // Invalidate reset token immediately to prevent replay attacks
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    await logAction(
+      user._id,
+      'PASSWORD_RESET_SUCCESS',
+      `Password successfully reset using verified token from IP: ${req.ip}`,
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully! Please sign in with your new credentials.'
+    });
+  } catch (error) {
+    console.error('[AUTH ERROR] Reset password completion failed:', error);
+    res.status(500).json({ message: 'Internal error completing password reset.' });
+  }
+};
+
+app.post('/api/auth/reset-password/:token', handlePasswordReset);
+app.post('/api/auth/reset-password', handlePasswordReset);
 
 // ======================== ALLOWANCE RULES & DIVISIONS ========================
 

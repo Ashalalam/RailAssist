@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "seed": "node seeder.js"
+    "seed": "node seeder.js",
+    "test": "node test_security_suite.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

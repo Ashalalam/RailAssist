@@ -1,32 +1,81 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { AlertTriangle, RefreshCw, Mail, Lock, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AlertTriangle, RefreshCw, Mail, Lock, CheckCircle2, ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 
 const ForgotPassword = () => {
-  const { forgotPassword } = useAuth();
+  const { requestPasswordReset, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const { token: paramToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryToken = searchParams.get('token');
+  const activeToken = paramToken || queryToken;
+
+  // Step 1: Request Link Form State
   const [email, setEmail] = useState('');
+  const [devRecoveryUrl, setDevRecoveryUrl] = useState('');
+
+  // Step 2: Set New Password Form State
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Status Feedback States
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // Handle Step 1: Request Password Reset Link
+  const handleRequestLink = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setDevRecoveryUrl('');
     setLoading(true);
 
     try {
-      await forgotPassword(email, newPassword);
-      setSuccess('Password updated successfully. You will be redirected to Sign In shortly.');
+      const response = await requestPasswordReset(email);
+      setSuccess(
+        response.message || 
+        'If an account associated with that email exists, password reset instructions have been dispatched.'
+      );
+
+      // In local development with unconfigured SMTP, display the generated dev link
+      if (response.devResetUrl) {
+        setDevRecoveryUrl(response.devResetUrl);
+      }
+    } catch (err) {
+      setError(err.message || 'Error processing request. Please verify your email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Step 2: Submit New Password with Token
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Password and confirmation password do not match.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await resetPassword(activeToken, newPassword);
+      setSuccess(response.message || 'Password updated successfully! Redirecting to sign in...');
       setTimeout(() => {
         navigate('/login');
       }, 2500);
     } catch (err) {
-      setError(err.message || 'Error updating password. Verify email.');
+      setError(err.message || 'Password reset token is invalid or has expired. Please request a new link.');
     } finally {
       setLoading(false);
     }
@@ -34,82 +83,162 @@ const ForgotPassword = () => {
 
   return (
     <div className="d-flex align-items-center justify-content-center min-vh-100 px-3 py-5" style={{ backgroundColor: 'var(--bg-main)' }}>
-      <div className="w-100" style={{ maxWidth: '400px' }}>
-        {/* Brand Logo & Description */}
+      <div className="w-100" style={{ maxWidth: '420px' }}>
+        {/* Brand Header */}
         <div className="text-center mb-4">
-          <img src="/logo.svg" alt="RailAssist Logo" width="64" height="64" className="mb-3" />
-          <h2 className="text-white mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>Reset Password</h2>
-          <p className="text-secondary-custom small mb-0">Recover your RailAssist portal access</p>
+          <img src="/logo.svg" alt="RailAssist Logo" width="60" height="60" className="mb-3" />
+          <h2 className="text-white mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>
+            {activeToken ? 'Set New Password' : 'Reset Password'}
+          </h2>
+          <p className="text-secondary-custom small mb-0">
+            {activeToken 
+              ? 'Enter and confirm your new secure credentials' 
+              : 'Recover your RailAssist official portal access'}
+          </p>
         </div>
 
-        {/* Card */}
+        {/* Form Card */}
         <div className="card-saas">
-          <h4 className="mb-4 text-white" style={{ fontSize: '18px', fontWeight: '600' }}>Reset Credentials</h4>
+          <div className="d-flex align-items-center gap-2 mb-3">
+            {activeToken ? (
+              <KeyRound size={18} className="text-primary" />
+            ) : (
+              <ShieldCheck size={18} className="text-primary" />
+            )}
+            <h4 className="mb-0 text-white" style={{ fontSize: '16px', fontWeight: '600' }}>
+              {activeToken ? 'Credential Reset' : 'Account Verification'}
+            </h4>
+          </div>
 
           {error && (
-            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-error)' }}>
-              <AlertTriangle size={15} />
+            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-start gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-error)' }}>
+              <AlertTriangle size={15} className="mt-1 flex-shrink-0" />
               <span className="small">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="alert alert-success py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
-              <CheckCircle2 size={15} />
+            <div className="alert alert-success py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-start gap-2" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
+              <CheckCircle2 size={15} className="mt-1 flex-shrink-0" />
               <span className="small">{success}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label-saas" htmlFor="email">Registered Email Address</label>
-              <div className="position-relative">
-                <Mail size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
-                <input
-                  type="email"
-                  id="email"
-                  className="form-control form-control-saas"
-                  placeholder="staff@railassist.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={{ paddingLeft: '34px' }}
-                />
-              </div>
+          {/* Local Developer Verification Box when SMTP is not configured */}
+          {devRecoveryUrl && (
+            <div className="p-3 mb-4 rounded border" style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
+              <span className="text-primary font-weight-semibold d-block small mb-1">
+                🛠️ Local Development Verification Mode:
+              </span>
+              <p className="text-secondary-custom small mb-2" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                Email delivery provider is unconfigured in <code>server/.env</code>. For testing, use the single-use recovery link below:
+              </p>
+              <a 
+                href={devRecoveryUrl} 
+                className="btn btn-sm btn-glow-primary w-100 text-decoration-none"
+                style={{ fontSize: '12px' }}
+              >
+                Proceed with Generated Recovery Token
+              </a>
             </div>
+          )}
 
-            <div className="mb-4">
-              <label className="form-label-saas" htmlFor="newPassword">New Security Password</label>
-              <div className="position-relative">
-                <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
-                <input
-                  type="password"
-                  id="newPassword"
-                  className="form-control form-control-saas"
-                  placeholder="Minimum 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  style={{ paddingLeft: '34px' }}
-                />
+          {/* STEP 2: Token Active -> Submit New Password */}
+          {activeToken ? (
+            <form onSubmit={handleResetPassword}>
+              <div className="mb-3">
+                <label className="form-label-saas" htmlFor="newPassword">New Security Password</label>
+                <div className="position-relative">
+                  <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <input
+                    type="password"
+                    id="newPassword"
+                    className="form-control form-control-saas"
+                    placeholder="Minimum 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    style={{ paddingLeft: '34px' }}
+                  />
+                </div>
               </div>
-            </div>
 
-            <button type="submit" className="btn btn-glow-primary w-100 mb-3 d-flex align-items-center justify-content-center gap-1" disabled={loading}>
-              {loading ? (
-                <>
-                  <RefreshCw size={13} className="spin" />
-                  <span>Updating Password...</span>
-                </>
-              ) : (
-                'Reset Password'
-              )}
-            </button>
-          </form>
+              <div className="mb-4">
+                <label className="form-label-saas" htmlFor="confirmPassword">Confirm New Password</label>
+                <div className="position-relative">
+                  <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    className="form-control form-control-saas"
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    style={{ paddingLeft: '34px' }}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-glow-primary w-100 mb-3 d-flex align-items-center justify-content-center gap-1" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw size={13} className="spin" />
+                    <span>Verifying Token & Updating...</span>
+                  </>
+                ) : (
+                  'Save New Password'
+                )}
+              </button>
+            </form>
+          ) : (
+            /* STEP 1: No Token -> Request Recovery Link via Email */
+            <form onSubmit={handleRequestLink}>
+              <div className="mb-4">
+                <label className="form-label-saas" htmlFor="email">Registered Official Email</label>
+                <div className="position-relative">
+                  <Mail size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <input
+                    type="email"
+                    id="email"
+                    className="form-control form-control-saas"
+                    placeholder="staff@railassist.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    style={{ paddingLeft: '34px' }}
+                  />
+                </div>
+                <small className="text-secondary-custom d-block mt-2" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                  A single-use, 15-minute verification link will be issued to your registered railway address.
+                </small>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-glow-primary w-100 mb-3 d-flex align-items-center justify-content-center gap-1" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw size={13} className="spin" />
+                    <span>Generating Secure Link...</span>
+                  </>
+                ) : (
+                  'Send Reset Instructions'
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="text-center mt-3" style={{ fontSize: '13px' }}>
-            <Link to="/login" style={{ color: '#10B981', textDecoration: 'none', fontWeight: '500' }}>
-              Back to Sign In
+            <Link to="/login" className="d-inline-flex align-items-center gap-1 text-decoration-none" style={{ color: '#10B981', fontWeight: '500' }}>
+              <ArrowLeft size={13} />
+              <span>Back to Sign In</span>
             </Link>
           </div>
         </div>

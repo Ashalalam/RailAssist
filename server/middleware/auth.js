@@ -1,9 +1,5 @@
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'railassist_secret_key_12345';
+import { JWT_SECRET } from '../config/jwt.js';
 
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
