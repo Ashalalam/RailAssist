@@ -39,52 +39,12 @@ app.use(express.json());
 // Database connection
 connectDB();
 
-// Helper: Calculate Night Duty Hours (22:00 to 06:00)
-function calculateNightDutyHours(start, end) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) return 0;
-
-  let nightMinutes = 0;
-  const stepMinutes = 5;
-  let current = new Date(startDate);
-
-  while (current < endDate) {
-    const hour = current.getHours();
-    if (hour >= 22 || hour < 6) {
-      nightMinutes += stepMinutes;
-    }
-    current.setMinutes(current.getMinutes() + stepMinutes);
-  }
-
-  return parseFloat((nightMinutes / 60).toFixed(2));
-}
-
-// Helper: Calculate Traveling Allowance (TA) based on hours away from HQ
-function calculateTA(start, end, dailyRate) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) return 0;
-
-  const diffMs = endDate - startDate;
-  const hours = diffMs / (1000 * 60 * 60);
-
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-
-  let remainderTA = 0;
-  if (remainingHours > 0) {
-    if (remainingHours <= 6) {
-      remainderTA = 0.3 * dailyRate;
-    } else if (remainingHours <= 12) {
-      remainderTA = 0.7 * dailyRate;
-    } else {
-      remainderTA = 1.0 * dailyRate;
-    }
-  }
-
-  return parseFloat(((days * dailyRate) + remainderTA).toFixed(2));
-}
+import {
+  calculateNightDutyHours,
+  calculateTA,
+  calculateNDA,
+  parseAsIST
+} from './utils/calculations.js';
 
 
 

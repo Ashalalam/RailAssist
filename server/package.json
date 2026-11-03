@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node index.js",
     "seed": "node seeder.js",
-    "test": "node test_security_suite.mjs"
+    "test:security": "node test_security_suite.mjs",
+    "test:timezone": "node test_timezone_suite.mjs",
+    "test:regression": "node test_regression_suite.mjs",
+    "test": "node test_security_suite.mjs && node test_timezone_suite.mjs && node test_regression_suite.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

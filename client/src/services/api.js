@@ -1,4 +1,18 @@
-const BASE_URL = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) ? 'http://localhost:5000' : '';
+export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env?.VITE_API_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim().replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+    if (isLocal) {
+      return 'http://localhost:5000';
+    }
+  }
+  return '';
+};
+
+export const BASE_URL = getApiBaseUrl();
 
 const getHeaders = () => {
   const headers = {
@@ -111,6 +125,29 @@ export const api = {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ journeys }),
+      });
+      return handleResponse(res);
+    },
+  },
+  templates: {
+    getAll: async () => {
+      const res = await fetch(`${BASE_URL}/api/templates`, {
+        headers: getHeaders(),
+      });
+      return handleResponse(res);
+    },
+    create: async (data) => {
+      const res = await fetch(`${BASE_URL}/api/templates`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res);
+    },
+    delete: async (id) => {
+      const res = await fetch(`${BASE_URL}/api/templates/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
       });
       return handleResponse(res);
     },

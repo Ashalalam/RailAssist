@@ -5,52 +5,24 @@ import localDB from '../services/db';
 
 const JourneyContext = createContext(null);
 
-// Helper: Calculate Client-Side Night Duty Hours (22:00 to 06:00)
-export function calculateLocalNightDutyHours(start, end) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) return 0;
+import {
+  calculateNightDutyHours,
+  calculateTA,
+  calculateNDA,
+  calculateLocalNightDutyHours,
+  calculateLocalTA,
+  calculateLocalNDA
+} from '../utils/calculations';
 
-  let nightMinutes = 0;
-  const stepMinutes = 5;
-  let current = new Date(startDate);
+export {
+  calculateNightDutyHours,
+  calculateTA,
+  calculateNDA,
+  calculateLocalNightDutyHours,
+  calculateLocalTA,
+  calculateLocalNDA
+};
 
-  while (current < endDate) {
-    const hour = current.getHours();
-    if (hour >= 22 || hour < 6) {
-      nightMinutes += stepMinutes;
-    }
-    current.setMinutes(current.getMinutes() + stepMinutes);
-  }
-
-  return parseFloat((nightMinutes / 60).toFixed(2));
-}
-
-// Helper: Calculate Client-Side TA
-export function calculateLocalTA(start, end, dailyRate) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) return 0;
-
-  const diffMs = endDate - startDate;
-  const hours = diffMs / (1000 * 60 * 60);
-
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-
-  let remainderTA = 0;
-  if (remainingHours > 0) {
-    if (remainingHours <= 6) {
-      remainderTA = 0.3 * dailyRate;
-    } else if (remainingHours <= 12) {
-      remainderTA = 0.7 * dailyRate;
-    } else {
-      remainderTA = 1.0 * dailyRate;
-    }
-  }
-
-  return parseFloat(((days * dailyRate) + remainderTA).toFixed(2));
-}
 
 export const JourneyProvider = ({ children }) => {
   const { user, isOnline } = useAuth();
@@ -155,17 +127,11 @@ export const JourneyProvider = ({ children }) => {
       // Load Templates
       if (isOnline) {
         try {
-          const serverTemplates = await api.journeys.getAllTemplates || []; // Fallback if API changed
-          const res = await fetch('http://localhost:5000/api/templates', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('railassist_token')}` }
-          });
-          if (res.ok) {
-            const temps = await res.json();
-            setTemplates(temps);
-            await localDB.clear('templates');
-            for (const t of temps) {
-              await localDB.put('templates', { id: t._id, ...t });
-            }
+          const temps = await api.templates.getAll();
+          setTemplates(temps);
+          await localDB.clear('templates');
+          for (const t of temps) {
+            await localDB.put('templates', { id: t._id, ...t });
           }
         } catch (err) {
           console.log('Failed to fetch templates, loading from cache:', err);
@@ -397,22 +363,12 @@ export const JourneyProvider = ({ children }) => {
 
     if (isOnline) {
       try {
-        const res = await fetch('http://localhost:5000/api/templates', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('railassist_token')}`
-          },
-          body: JSON.stringify(templateData)
-        });
-        if (res.ok) {
-          const saved = await res.json();
-          // Replace local temp ID with MongoDB _id
-          await localDB.delete('templates', id);
-          const final = { id: saved._id, ...saved };
-          await localDB.put('templates', final);
-          setTemplates(prev => prev.map(t => t.id === id ? final : t));
-        }
+        const saved = await api.templates.create(templateData);
+        // Replace local temp ID with MongoDB _id
+        await localDB.delete('templates', id);
+        const final = { id: saved._id, ...saved };
+        await localDB.put('templates', final);
+        setTemplates(prev => prev.map(t => t.id === id ? final : t));
       } catch (err) {
         console.error('Save template to server failed:', err);
       }
@@ -426,10 +382,7 @@ export const JourneyProvider = ({ children }) => {
 
     if (isOnline && id.startsWith('template-') === false) { // True server ID
       try {
-        await fetch(`http://localhost:5000/api/templates/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('railassist_token')}` }
-        });
+        await api.templates.delete(id);
       } catch (err) {
         console.error('Delete template from server failed:', err);
       }
