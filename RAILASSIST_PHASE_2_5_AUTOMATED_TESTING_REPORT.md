@@ -325,7 +325,7 @@ computing gzip size...
 | Commit Hash | Description |
 | :--- | :--- |
 | `c59477c` | Base commit — Phase 2.4 Code Quality & Performance |
-| *(Pending)* | Phase 2.5 — Comprehensive automated testing, PWA offline verification, and regression protection |
+| `1337697` | Phase 2.5 — Comprehensive automated testing, PWA offline verification, and regression protection |
 
 ---
 
