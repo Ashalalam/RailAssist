@@ -5,9 +5,12 @@ class OCRWorker {
   constructor() {
     this.jobs = new Map();
     this.maxRetries = 3;
+    this.maxJobs = 500;
+    this.jobTTL = 60 * 60 * 1000; // 1 hour TTL
   }
 
   enqueueOCRJob(filePath, mimeType) {
+    this.pruneJobs();
     const jobId = `job-ocr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     // Set initial queue state
@@ -98,6 +101,24 @@ class OCRWorker {
         fs.unlinkSync(filePath);
       } catch (err) {
         console.error(`[OCRWorker] File cleanup failed:`, err);
+      }
+    }
+  }
+
+  pruneJobs() {
+    const now = Date.now();
+    for (const [id, job] of this.jobs.entries()) {
+      const isTerminal = job.status === 'completed' || job.status === 'failed';
+      if (isTerminal && (now - new Date(job.createdAt).getTime() > this.jobTTL)) {
+        this.jobs.delete(id);
+      }
+    }
+    if (this.jobs.size > this.maxJobs) {
+      for (const [id, job] of this.jobs.entries()) {
+        if (job.status === 'completed' || job.status === 'failed') {
+          this.jobs.delete(id);
+          if (this.jobs.size <= this.maxJobs) break;
+        }
       }
     }
   }

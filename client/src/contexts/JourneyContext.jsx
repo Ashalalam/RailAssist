@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { api } from '../services/api';
 import localDB from '../services/db';
@@ -6,22 +6,9 @@ import localDB from '../services/db';
 const JourneyContext = createContext(null);
 
 import {
-  calculateNightDutyHours,
-  calculateTA,
-  calculateNDA,
   calculateLocalNightDutyHours,
-  calculateLocalTA,
-  calculateLocalNDA
+  calculateLocalTA
 } from '../utils/calculations';
-
-export {
-  calculateNightDutyHours,
-  calculateTA,
-  calculateNDA,
-  calculateLocalNightDutyHours,
-  calculateLocalTA,
-  calculateLocalNDA
-};
 
 
 export const JourneyProvider = ({ children }) => {
@@ -34,33 +21,81 @@ export const JourneyProvider = ({ children }) => {
   const [syncProgress, setSyncProgress] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Unified data initialization flow: Sync offline data first if online, then load everything
-  useEffect(() => {
-    if (user) {
-      const initData = async () => {
-        setLoading(true);
-        try {
-          await localDB.init();
-          if (isOnline) {
-            await syncOfflineData();
-          } else {
-            await loadData();
-          }
-        } catch (err) {
-          console.error('Failed to initialize data:', err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      initData();
-    } else {
-      setJourneys([]);
-      setTemplates([]);
-      setReports([]);
-    }
-  }, [user, isOnline]);
+  const runOcrUploadPipeline = useCallback(async (photoId, fileBlob) => {
+    try {
+      await localDB.put('photos', { id: photoId, blob: fileBlob, status: 'uploading' });
+      
+      const formData = new FormData();
+      const file = new File([fileBlob], `slip-${Date.now()}.png`, { type: fileBlob.type });
+      formData.append('file', file);
 
-  const loadData = async () => {
+      const uploadResponse = await api.ai.uploadOcr(formData);
+      const jobId = uploadResponse.jobId;
+
+      await localDB.put('photos', { 
+        id: photoId, 
+        blob: fileBlob, 
+        status: 'processing', 
+        jobId 
+      });
+
+      // Poll for job completion status
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const statusRes = await api.ai.checkOcrStatus(jobId);
+            
+            if (statusRes.status === 'completed') {
+              clearInterval(pollInterval);
+              await localDB.put('photos', {
+                id: photoId,
+                blob: fileBlob,
+                status: 'completed',
+                jobId,
+                result: statusRes.result
+              });
+              resolve({ status: 'completed', result: statusRes.result });
+            } else if (statusRes.status === 'failed') {
+              clearInterval(pollInterval);
+              await localDB.put('photos', {
+                id: photoId,
+                blob: fileBlob,
+                status: 'failed',
+                jobId,
+                error: statusRes.error
+              });
+              reject(new Error(statusRes.error || 'AI OCR parsing failed.'));
+            } else if (attempts > 30) {
+              clearInterval(pollInterval);
+              await localDB.put('photos', {
+                id: photoId,
+                blob: fileBlob,
+                status: 'failed',
+                jobId,
+                error: 'Polling timeout exceeded.'
+              });
+              reject(new Error('AI OCR parsing timed out.'));
+            }
+          } catch (err) {
+            clearInterval(pollInterval);
+            reject(err);
+          }
+        }, 1500);
+      });
+    } catch (error) {
+      await localDB.put('photos', {
+        id: photoId,
+        blob: fileBlob,
+        status: 'failed',
+        error: error.message
+      });
+      throw error;
+    }
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       await localDB.init();
       
@@ -72,11 +107,11 @@ export const JourneyProvider = ({ children }) => {
           await localDB.put('rules', ruleData);
         } catch (err) {
           console.error('Failed to get rules from server:', err);
-          const cachedRules = await localDB.get('rules', user.role);
+          const cachedRules = await localDB.get('rules', user?.role);
           if (cachedRules) setRules(cachedRules);
         }
       } else {
-        const cachedRules = await localDB.get('rules', user.role);
+        const cachedRules = await localDB.get('rules', user?.role);
         if (cachedRules) setRules(cachedRules);
       }
 
@@ -165,10 +200,10 @@ export const JourneyProvider = ({ children }) => {
     } catch (error) {
       console.error('Data loading failed:', error);
     }
-  };
+  }, [isOnline, user]);
 
   // Synchronize unsynced offline records with the database
-  const syncOfflineData = async () => {
+  const syncOfflineData = useCallback(async () => {
     if (syncing || !isOnline) return;
     setSyncing(true);
     setSyncProgress(10);
@@ -249,7 +284,46 @@ export const JourneyProvider = ({ children }) => {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [syncing, isOnline, loadData, runOcrUploadPipeline]);
+
+  // Unified data initialization flow: Sync offline data first if online, then load everything
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      Promise.resolve().then(() => {
+        if (active) {
+          setJourneys([]);
+          setTemplates([]);
+          setReports([]);
+          setLoading(false);
+        }
+      });
+      return;
+    }
+
+    const initData = async () => {
+      setLoading(true);
+      try {
+        await localDB.init();
+        if (!active) return;
+        if (isOnline) {
+          await syncOfflineData();
+        } else {
+          await loadData();
+        }
+      } catch (err) {
+        console.error('Failed to initialize data:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    initData();
+
+    return () => {
+      active = false;
+    };
+  }, [user, isOnline, syncOfflineData, loadData]);
 
   // Create Journey
   const createJourney = async (journeyData) => {
@@ -409,79 +483,6 @@ export const JourneyProvider = ({ children }) => {
     }
   };
 
-  const runOcrUploadPipeline = async (photoId, fileBlob) => {
-    try {
-      await localDB.put('photos', { id: photoId, blob: fileBlob, status: 'uploading' });
-      
-      const formData = new FormData();
-      const file = new File([fileBlob], `slip-${Date.now()}.png`, { type: fileBlob.type });
-      formData.append('file', file);
-
-      const uploadResponse = await api.ai.uploadOcr(formData);
-      const jobId = uploadResponse.jobId;
-
-      await localDB.put('photos', { 
-        id: photoId, 
-        blob: fileBlob, 
-        status: 'processing', 
-        jobId 
-      });
-
-      // Poll for job completion status
-      return new Promise((resolve, reject) => {
-        let attempts = 0;
-        const pollInterval = setInterval(async () => {
-          attempts++;
-          try {
-            const statusRes = await api.ai.checkOcrStatus(jobId);
-            
-            if (statusRes.status === 'completed') {
-              clearInterval(pollInterval);
-              await localDB.put('photos', {
-                id: photoId,
-                blob: fileBlob,
-                status: 'completed',
-                jobId,
-                result: statusRes.result
-              });
-              resolve({ status: 'completed', result: statusRes.result });
-            } else if (statusRes.status === 'failed') {
-              clearInterval(pollInterval);
-              await localDB.put('photos', {
-                id: photoId,
-                blob: fileBlob,
-                status: 'failed',
-                jobId,
-                error: statusRes.error
-              });
-              reject(new Error(statusRes.error || 'AI OCR parsing failed.'));
-            } else if (attempts > 30) {
-              clearInterval(pollInterval);
-              await localDB.put('photos', {
-                id: photoId,
-                blob: fileBlob,
-                status: 'failed',
-                jobId,
-                error: 'Polling timeout exceeded.'
-              });
-              reject(new Error('AI OCR parsing timed out.'));
-            }
-          } catch (err) {
-            clearInterval(pollInterval);
-            reject(err);
-          }
-        }, 1500);
-      });
-    } catch (error) {
-      await localDB.put('photos', {
-        id: photoId,
-        blob: fileBlob,
-        status: 'failed',
-        error: error.message
-      });
-      throw error;
-    }
-  };
 
   const uploadDutySlip = async (fileBlob) => {
     const photoId = `photo-${Date.now()}`;
@@ -573,4 +574,5 @@ export const JourneyProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useJourneys = () => useContext(JourneyContext);

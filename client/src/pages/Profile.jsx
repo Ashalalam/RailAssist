@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import localDB from '../services/db';
 import { 
   User, 
   Lock, 
   ShieldAlert, 
-  HardDrive, 
+  CheckCircle2,
+  Trash2,
   Database,
   RefreshCw,
   AlertTriangle,
   Mail,
   Briefcase
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();

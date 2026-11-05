@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const Notifications = () => {
   const [permission, setPermission] = useState(Notification.permission);

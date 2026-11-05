@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import localDB from '../services/db';
 
@@ -9,6 +9,20 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('railassist_token'));
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const logout = useCallback(async () => {
+    localStorage.removeItem('railassist_token');
+    setToken(null);
+    setUser(null);
+    try {
+      await localDB.delete('profile', 'current_user');
+      await localDB.clear('journeys');
+      await localDB.clear('templates');
+      await localDB.clear('reports');
+    } catch (err) {
+      console.error('Logout cache clear failed:', err);
+    }
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -63,7 +77,7 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [token]);
+  }, [token, logout]);
 
   const login = async (email, password) => {
     setLoading(true);
@@ -85,7 +99,7 @@ export const AuthProvider = ({ children }) => {
           setUser(cachedUser);
           return cachedUser;
         }
-        throw new Error('Offline login is only available for the previously logged-in user on this device.');
+        throw new Error('Offline login is only available for the previously logged-in user on this device.', { cause: error });
       }
       throw error;
     } finally {
@@ -102,46 +116,26 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       await localDB.put('profile', { key: 'current_user', ...data.user });
       return data.user;
-    } catch (error) {
-      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = async () => {
-    localStorage.removeItem('railassist_token');
-    setToken(null);
-    setUser(null);
-    try {
-      await localDB.delete('profile', 'current_user');
-      await localDB.clear('journeys');
-      await localDB.clear('templates');
-      await localDB.clear('reports');
-    } catch (err) {
-      console.error('Logout cache clear failed:', err);
-    }
-  };
-
   const updateProfile = async (profileData) => {
-    try {
-      if (navigator.onLine) {
-        const updatedUser = await api.auth.updateProfile(profileData);
-        setUser(updatedUser);
-        await localDB.put('profile', { key: 'current_user', ...updatedUser });
-        return updatedUser;
-      } else {
-        // Offline edit: update local cache and note that it's pending profile sync
-        const cachedUser = await localDB.get('profile', 'current_user');
-        const merged = { ...cachedUser, ...profileData };
-        setUser(merged);
-        await localDB.put('profile', { key: 'current_user', ...merged });
-        // We save profile update to profile store to sync later if needed
-        await localDB.put('profile', { key: 'pending_profile_update', ...profileData });
-        return merged;
-      }
-    } catch (error) {
-      throw error;
+    if (navigator.onLine) {
+      const updatedUser = await api.auth.updateProfile(profileData);
+      setUser(updatedUser);
+      await localDB.put('profile', { key: 'current_user', ...updatedUser });
+      return updatedUser;
+    } else {
+      // Offline edit: update local cache and note that it's pending profile sync
+      const cachedUser = await localDB.get('profile', 'current_user');
+      const merged = { ...cachedUser, ...profileData };
+      setUser(merged);
+      await localDB.put('profile', { key: 'current_user', ...merged });
+      // We save profile update to profile store to sync later if needed
+      await localDB.put('profile', { key: 'pending_profile_update', ...profileData });
+      return merged;
     }
   };
 
@@ -176,4 +170,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

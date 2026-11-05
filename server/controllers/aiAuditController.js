@@ -18,6 +18,18 @@ class AIAuditController {
       let healthScore = 100;
 
       // 2. Deterministic Rule Engine
+      // Concurrently query overlap checks for all shifts to eliminate sequential N+1 database roundtrips
+      const overlapsList = await Promise.all(
+        list.map((item) =>
+          JourneyRepository.checkOverlaps(
+            userId,
+            item.actualDeparture,
+            item.actualArrival,
+            item._id
+          )
+        )
+      );
+
       for (let i = 0; i < list.length; i++) {
         const item = list[i];
         
@@ -35,12 +47,7 @@ class AIAuditController {
         }
 
         // Rule B: Overlap checks
-        const overlaps = await JourneyRepository.checkOverlaps(
-          userId, 
-          item.actualDeparture, 
-          item.actualArrival, 
-          item._id
-        );
+        const overlaps = overlapsList[i] || [];
         if (overlaps.length > 0) {
           warnings.push({
             type: 'OVERLAPPING_SHIFT',

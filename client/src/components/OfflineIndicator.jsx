@@ -1,10 +1,9 @@
-import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useJourneys } from '../contexts/JourneyContext';
 
 const OfflineIndicator = () => {
   const { isOnline } = useAuth();
-  const { syncing, syncProgress, triggerManualSync } = useJourneys();
+  const { syncing, syncProgress } = useJourneys();
 
   if (!isOnline) {
     return (

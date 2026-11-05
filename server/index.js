@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import fs from 'fs';
 
@@ -615,18 +616,23 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
     // Snapshot user details for audit preservation before deletion
     const userSnapshot = `${user.name} <${user.email}> (${user.role}, Division: ${user.division})`;
 
-    // Check transaction support dynamically
+    // Check transaction support dynamically (requires replica set or mongos cluster)
     let session = null;
     let useTransaction = false;
-    try {
-      session = await mongoose.startSession();
-      session.startTransaction();
-      useTransaction = true;
-    } catch {
-      useTransaction = false;
-      if (session) {
-        await session.endSession();
-        session = null;
+    const topologyType = mongoose.connection?.client?.topology?.description?.type;
+    const supportsTransactions = ['ReplicaSetWithPrimary', 'Sharded', 'LoadBalanced'].includes(topologyType);
+
+    if (supportsTransactions) {
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+        useTransaction = true;
+      } catch {
+        useTransaction = false;
+        if (session) {
+          await session.endSession();
+          session = null;
+        }
       }
     }
 

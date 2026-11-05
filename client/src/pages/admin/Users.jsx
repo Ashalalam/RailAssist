@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 
@@ -14,20 +14,33 @@ const AdminUsers = () => {
   const [editStatus, setEditStatus] = useState('');
   const [editIsAdmin, setEditIsAdmin] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchUsers = async () => {
-    try {
-      const data = await api.admin.getUsers();
-      setUsers(data);
-    } catch (err) {
-      setError(err.message || 'Failed to retrieve accounts.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    let ignore = false;
+    const fetchUsers = async () => {
+      try {
+        const data = await api.admin.getUsers();
+        if (!ignore) {
+          setUsers(data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err.message || 'Failed to retrieve accounts.');
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUsers();
+
+    return () => {
+      ignore = true;
+    };
+  }, [refreshKey]);
 
   const handleEditClick = (user) => {
     setSelectedUser(user);
@@ -48,7 +61,7 @@ const AdminUsers = () => {
       });
       alert('User settings updated successfully!');
       setSelectedUser(null);
-      fetchUsers(); // Refresh
+      setRefreshKey(k => k + 1); // Refresh
     } catch (err) {
       alert('Update failed: ' + err.message);
     }
@@ -59,7 +72,7 @@ const AdminUsers = () => {
       try {
         await api.admin.deleteUser(id);
         alert('User account deleted.');
-        fetchUsers(); // Refresh
+        setRefreshKey(k => k + 1); // Refresh
       } catch (err) {
         alert('Deletion failed: ' + err.message);
       }
@@ -94,6 +107,7 @@ const AdminUsers = () => {
         <div className={selectedUser ? "col-12 col-lg-8" : "col-12"}>
           <div className="card-saas">
             <h5 className="text-white mb-3">Accounts ({users.length})</h5>
+            {error && <div className="alert alert-danger mb-3 py-2 px-3 small">{error}</div>}
             <div className="table-responsive">
               <table className="table table-dark table-hover border-secondary align-middle">
                 <thead>

@@ -1,23 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useJourneys } from '../contexts/JourneyContext';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   FileSpreadsheet, 
-  Calendar, 
-  Download, 
-  Share2, 
   Printer, 
   Info, 
   FileText,
   FileCheck,
-  CheckCircle2,
   AlertTriangle,
   FolderOpen,
-  ArrowRight,
-  Eye,
-  FileCode
+  Eye
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const Reports = () => {
   const { user } = useAuth();
@@ -25,52 +18,55 @@ const Reports = () => {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // "YYYY-MM"
   const [reportType, setReportType] = useState('TA'); // "TA", "NDA", "DIARY"
-  const [matchingJourneys, setMatchingJourneys] = useState([]);
-  const [totalTA, setTotalTA] = useState(0);
-  const [totalNDA, setTotalNDA] = useState(0);
-  const [totalNightHours, setTotalNightHours] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
 
   // Compliance Audit states
   const [auditResult, setAuditResult] = useState(null);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  // Load matching journeys based on filters
-  useEffect(() => {
-    const filtered = journeys.filter(j => {
-      const depDate = new Date(j.scheduledDeparture);
-      const monthStr = depDate.toISOString().substring(0, 7);
-      return monthStr === selectedMonth;
-    }).sort((a, b) => new Date(a.scheduledDeparture) - new Date(b.scheduledDeparture));
-
-    setMatchingJourneys(filtered);
+  // Load matching journeys based on filters via useMemo
+  const { matchingJourneys, totalTA, totalNDA, totalNightHours } = useMemo(() => {
+    const filtered = journeys
+      .filter(j => {
+        const depDate = new Date(j.scheduledDeparture);
+        const monthStr = depDate.toISOString().substring(0, 7);
+        return monthStr === selectedMonth;
+      })
+      .sort((a, b) => new Date(a.scheduledDeparture) - new Date(b.scheduledDeparture));
 
     const taSum = filtered.reduce((sum, j) => sum + (j.taAmount || 0), 0);
     const ndaSum = filtered.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
     const nightSum = filtered.reduce((sum, j) => sum + (j.nightDutyHours || 0), 0);
 
-    setTotalTA(taSum);
-    setTotalNDA(ndaSum);
-    setTotalNightHours(parseFloat(nightSum.toFixed(2)));
+    return {
+      matchingJourneys: filtered,
+      totalTA: taSum,
+      totalNDA: ndaSum,
+      totalNightHours: parseFloat(nightSum.toFixed(2))
+    };
   }, [selectedMonth, journeys]);
 
   // Trigger Audit check whenever selectedMonth or journeys update
   useEffect(() => {
+    let active = true;
     if (selectedMonth) {
       const runAudit = async () => {
         setAuditLoading(true);
         try {
           const res = await runAuditReport(selectedMonth);
-          setAuditResult(res);
+          if (active) setAuditResult(res);
         } catch (err) {
           console.error('Audit run failed:', err);
         } finally {
-          setAuditLoading(false);
+          if (active) setAuditLoading(false);
         }
       };
       runAudit();
     }
-  }, [selectedMonth, journeys]);
+    return () => {
+      active = false;
+    };
+  }, [selectedMonth, journeys, runAuditReport]);
 
   // Generate and archive report
   const handleGenerateReport = async () => {

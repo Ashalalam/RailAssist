@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useJourneys } from '../contexts/JourneyContext';
 import { api } from '../services/api';
@@ -8,18 +8,21 @@ import {
   Upload, 
   Mic, 
   MicOff, 
-  Trash2, 
   ArrowLeft, 
   CheckCircle2, 
   AlertTriangle, 
   Info,
-  Calendar,
   Clock,
-  Bookmark,
   MapPin,
-  HelpCircle
+  Navigation
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const tzoffset = date.getTimezoneOffset() * 60000;
+  return (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+};
 
 const JourneyForm = () => {
   const { id } = useParams(); // localId in offline mode
@@ -214,45 +217,37 @@ const JourneyForm = () => {
       }, 300);
 
       return () => clearTimeout(delayDebounce);
-    } else {
-      setTrainSuggestions([]);
     }
   }, [trainNumber, isEditMode]);
 
-  // Compute delays automatically on arrival dates change
-  useEffect(() => {
-    if (scheduledArrival && actualArrival) {
-      const sched = new Date(scheduledArrival);
-      const act = new Date(actualArrival);
+  const updateDelay = (schedStr, actStr) => {
+    if (schedStr && actStr) {
+      const sched = new Date(schedStr);
+      const act = new Date(actStr);
       if (!isNaN(sched) && !isNaN(act) && act > sched) {
         const diffMs = act - sched;
         const diffMins = Math.round(diffMs / (1000 * 60));
         setDelayMinutes(diffMins.toString());
-      } else {
-        setDelayMinutes('0');
+        return;
       }
     }
-  }, [scheduledArrival, actualArrival]);
+    setDelayMinutes('0');
+  };
 
-  // Auto-populate HQ Absence times based on Actual times
-  useEffect(() => {
-    if (actualDeparture && !departureFromHq) {
-      setDepartureFromHq(actualDeparture);
-    }
-  }, [actualDeparture, departureFromHq]);
+  const handleScheduledArrivalChange = (val) => {
+    setScheduledArrival(val);
+    updateDelay(val, actualArrival);
+  };
 
-  useEffect(() => {
-    if (actualArrival && !arrivalAtHq) {
-      setArrivalAtHq(actualArrival);
-    }
-  }, [actualArrival, arrivalAtHq]);
+  const handleActualDepartureChange = (val) => {
+    setActualDeparture(val);
+    setDepartureFromHq(prev => prev || val);
+  };
 
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const tzoffset = date.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
-    return localISOTime;
+  const handleActualArrivalChange = (val) => {
+    setActualArrival(val);
+    setArrivalAtHq(prev => prev || val);
+    updateDelay(scheduledArrival, val);
   };
 
   const handleSelectTrain = (train) => {
@@ -307,7 +302,7 @@ const JourneyForm = () => {
       if (isEditMode) {
         await updateJourney(id, journeyPayload);
       } else {
-        const created = await createJourney(journeyPayload);
+        await createJourney(journeyPayload);
 
         if (saveAsTemplate && templateName) {
           const schedDepTime = scheduledDeparture.split('T')[1];
@@ -398,8 +393,12 @@ const JourneyForm = () => {
                 placeholder="e.g. 12951"
                 value={trainNumber}
                 onChange={(e) => {
-                  setTrainNumber(e.target.value);
+                  const val = e.target.value;
+                  setTrainNumber(val);
                   setShowSuggestions(true);
+                  if (val.length < 2) {
+                    setTrainSuggestions([]);
+                  }
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 required
@@ -491,7 +490,7 @@ const JourneyForm = () => {
                 type="datetime-local"
                 className={`form-control form-control-saas ${getConfidenceClass('scheduledArrival')}`}
                 value={scheduledArrival}
-                onChange={(e) => setScheduledArrival(e.target.value)}
+                onChange={(e) => handleScheduledArrivalChange(e.target.value)}
                 required
               />
               {renderConfidenceAlert('scheduledArrival')}
@@ -504,7 +503,7 @@ const JourneyForm = () => {
                 type="datetime-local"
                 className={`form-control form-control-saas ${getConfidenceClass('actualDeparture')}`}
                 value={actualDeparture}
-                onChange={(e) => setActualDeparture(e.target.value)}
+                onChange={(e) => handleActualDepartureChange(e.target.value)}
                 required
               />
               {renderConfidenceAlert('actualDeparture')}
@@ -515,7 +514,7 @@ const JourneyForm = () => {
                 type="datetime-local"
                 className={`form-control form-control-saas ${getConfidenceClass('actualArrival')}`}
                 value={actualArrival}
-                onChange={(e) => setActualArrival(e.target.value)}
+                onChange={(e) => handleActualArrivalChange(e.target.value)}
                 required
               />
               {renderConfidenceAlert('actualArrival')}

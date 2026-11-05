@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useJourneys } from '../contexts/JourneyContext';
@@ -6,7 +6,6 @@ import InstallPrompt from '../components/InstallPrompt';
 import Chart from 'react-apexcharts';
 import { motion } from 'framer-motion';
 import { 
-  Calendar, 
   MapPin, 
   Clock, 
   FileText, 
@@ -14,10 +13,6 @@ import {
   Share2, 
   ArrowRight, 
   Plus, 
-  Activity, 
-  CheckCircle2, 
-  Wifi, 
-  WifiOff, 
   RefreshCw,
   FolderOpen,
   Keyboard,
@@ -87,32 +82,35 @@ const Dashboard = () => {
     .sort((a, b) => new Date(a.scheduledDeparture) - new Date(b.scheduledDeparture));
   const nextJourney = upcomingJourneys.length > 0 ? upcomingJourneys[0] : null;
 
-  // 3. Current Month Calculations
+  // 3. Current Month Calculations & KPI Computations (memoized)
   const currentMonthStr = new Date().toISOString().substring(0, 7); // "YYYY-MM"
-  const monthlyJourneys = journeys.filter(j => {
-    const dep = new Date(j.scheduledDeparture);
-    return dep.toISOString().substring(0, 7) === currentMonthStr;
-  });
+  const { monthlyTA, monthlyNDA, monthlyDistance, monthlyDutyHours, unsyncedCount } = useMemo(() => {
+    const monthlyJourneys = journeys.filter(j => {
+      const dep = new Date(j.scheduledDeparture);
+      return dep.toISOString().substring(0, 7) === currentMonthStr;
+    });
 
-  // KPI Computations
-  const monthlyTA = monthlyJourneys.reduce((sum, j) => sum + (j.taAmount || 0), 0);
-  const monthlyNDA = monthlyJourneys.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
-  const totalClaims = monthlyTA + monthlyNDA;
+    const taSum = monthlyJourneys.reduce((sum, j) => sum + (j.taAmount || 0), 0);
+    const ndaSum = monthlyJourneys.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
+    const distSum = monthlyJourneys.reduce((sum, j) => sum + (j.distanceKm || 0), 0);
+    const dutyHours = parseFloat(monthlyJourneys.reduce((sum, j) => {
+      const dep = new Date(j.actualDeparture);
+      const arr = new Date(j.actualArrival);
+      if (!isNaN(dep) && !isNaN(arr) && arr > dep) {
+        return sum + (arr - dep) / (1000 * 60 * 60);
+      }
+      return sum;
+    }, 0).toFixed(1));
+    const unsynced = journeys.filter(j => j.syncStatus && j.syncStatus !== 'synced').length;
 
-  const monthlyDistance = monthlyJourneys.reduce((sum, j) => sum + (j.distanceKm || 0), 0);
-
-  // Sum of total elapsed duty hours in the current month
-  const monthlyDutyHours = parseFloat(monthlyJourneys.reduce((sum, j) => {
-    const dep = new Date(j.actualDeparture);
-    const arr = new Date(j.actualArrival);
-    if (!isNaN(dep) && !isNaN(arr) && arr > dep) {
-      return sum + (arr - dep) / (1000 * 60 * 60);
-    }
-    return sum;
-  }, 0).toFixed(1));
-
-  // Sync statuses counts
-  const unsyncedCount = journeys.filter(j => j.syncStatus && j.syncStatus !== 'synced').length;
+    return {
+      monthlyTA: taSum,
+      monthlyNDA: ndaSum,
+      monthlyDistance: distSum,
+      monthlyDutyHours: dutyHours,
+      unsyncedCount: unsynced
+    };
+  }, [journeys, currentMonthStr]);
 
   const getFullTitle = (role) => {
     switch (role) {

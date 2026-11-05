@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useJourneys } from '../contexts/JourneyContext';
@@ -6,14 +5,12 @@ import {
   User, 
   Bell, 
   RefreshCw, 
-  CreditCard, 
   ShieldAlert, 
   LogOut, 
   ChevronRight,
   Database,
   Users
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const Settings = () => {
   const { user, logout, isOnline } = useAuth();

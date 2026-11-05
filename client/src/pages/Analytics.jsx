@@ -1,37 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import { useJourneys } from '../contexts/JourneyContext';
 import { useAuth } from '../contexts/AuthContext';
-import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Info, HelpCircle } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 const Analytics = () => {
   const { journeys, loading } = useJourneys();
   const { user } = useAuth();
 
-  const [monthlyChartData, setMonthlyChartData] = useState({
-    options: {},
-    series: []
-  });
-
-  const [distributionChartData, setDistributionChartData] = useState({
-    options: {},
-    series: []
-  });
-
-  const [averageDelay, setAverageDelay] = useState(0);
-  const [totalKm, setTotalKm] = useState(0);
-
-  useEffect(() => {
-    if (journeys.length === 0) return;
+  const { averageDelay, totalKm, monthlyChartData, distributionChartData } = useMemo(() => {
+    if (journeys.length === 0) {
+      return {
+        averageDelay: 0,
+        totalKm: 0,
+        monthlyChartData: { options: {}, series: [] },
+        distributionChartData: { options: {}, series: [] }
+      };
+    }
 
     // 1. Calculate general stats
     const delays = journeys.map(j => j.delayMinutes || 0);
     const avgDelay = delays.length > 0 ? (delays.reduce((s, v) => s + v, 0) / delays.length) : 0;
-    setAverageDelay(parseFloat(avgDelay.toFixed(1)));
-
     const kmSum = journeys.reduce((sum, j) => sum + (j.distanceKm || 0), 0);
-    setTotalKm(kmSum);
 
     // 2. Process Monthly TA/NDA stats (last 6 months)
     const monthMap = {};
@@ -56,7 +46,7 @@ const Analytics = () => {
     const taSeries = months.map(m => monthMap[m].ta);
     const ndaSeries = months.map(m => monthMap[m].nda);
 
-    setMonthlyChartData({
+    const monthlyChart = {
       series: [
         { name: 'Traveling Allowance (TA)', data: taSeries },
         { name: 'Night Duty Allowance (NDA)', data: ndaSeries }
@@ -103,13 +93,13 @@ const Analytics = () => {
           theme: 'dark'
         }
       }
-    });
+    };
 
     // 3. Process TA vs NDA Pie Chart distribution
     const totalTA = journeys.reduce((sum, j) => sum + (j.taAmount || 0), 0);
     const totalNDA = journeys.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
 
-    setDistributionChartData({
+    const distributionChart = {
       series: [totalTA || 1, totalNDA || 1],
       options: {
         chart: {
@@ -159,8 +149,14 @@ const Analytics = () => {
           theme: 'dark'
         }
       }
-    });
+    };
 
+    return {
+      averageDelay: parseFloat(avgDelay.toFixed(1)),
+      totalKm: kmSum,
+      monthlyChartData: monthlyChart,
+      distributionChartData: distributionChart
+    };
   }, [journeys]);
 
   if (loading) {

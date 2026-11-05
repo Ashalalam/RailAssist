@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useJourneys } from '../contexts/JourneyContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -95,7 +95,7 @@ const AIChatModal = () => {
     }
   };
 
-  const executeAction = (action, params) => {
+  const executeAction = (action) => {
     switch (action) {
       case 'NAVIGATE_REPORTS':
         setMessages(prev => [...prev, { role: 'system', text: '⚡ Copilot Action: Navigating to Reports page...' }]);

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { AlertTriangle, RefreshCw, User, Mail, Lock, Briefcase, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const Signup = () => {
   const { register } = useAuth();

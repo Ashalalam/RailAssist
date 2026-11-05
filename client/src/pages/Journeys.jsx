@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useJourneys } from '../contexts/JourneyContext';
-import { useAuth } from '../contexts/AuthContext';
-import { motion } from 'framer-motion';
 import { 
   Search, 
-  Calendar, 
   Trash2, 
   Edit2, 
   Plus, 
@@ -14,16 +11,12 @@ import {
   ArrowUpDown, 
   RefreshCw,
   FolderOpen,
-  Filter,
-  MapPin,
-  Clock,
-  Navigation
+  Clock
 } from 'lucide-react';
 
 const Journeys = () => {
   const { journeys, templates, deleteJourney, createJourney, syncing, syncProgress, triggerManualSync, loading } = useJourneys();
   const navigate = useNavigate();
-  const { isOnline } = useAuth();
 
   // Filter states
   const [search, setSearch] = useState('');
@@ -38,11 +31,6 @@ const Journeys = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  // Reset pagination to first page when search/filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, syncFilter, startDate, endDate]);
 
   const handleApplyTemplate = async (template) => {
     if (window.confirm(`Create a new journey using template "${template.templateName}"?`)) {
@@ -231,7 +219,7 @@ const Journeys = () => {
               className="form-control form-control-saas" 
               placeholder="Search train, number, or route..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               style={{ paddingLeft: '38px' }}
             />
           </div>
@@ -241,7 +229,7 @@ const Journeys = () => {
             <select 
               className="form-select form-control-saas" 
               value={syncFilter}
-              onChange={(e) => setSyncFilter(e.target.value)}
+              onChange={(e) => { setSyncFilter(e.target.value); setCurrentPage(1); }}
               style={{ 
                 backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e")`, 
                 backgroundPosition: 'right 0.75rem center', 
@@ -260,7 +248,7 @@ const Journeys = () => {
               type="date" 
               className="form-control form-control-saas"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
               placeholder="Start Date"
             />
           </div>
@@ -271,7 +259,7 @@ const Journeys = () => {
               type="date" 
               className="form-control form-control-saas"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
               placeholder="End Date"
             />
           </div>
@@ -338,7 +326,6 @@ const Journeys = () => {
                   const isSynced = j.syncStatus === 'synced';
                   const taAmt = j.taAmount || 0;
                   const ndaAmt = j.ndaAmount || 0;
-                  const totAmt = taAmt + ndaAmt;
 
                   // Duty timing calculation
                   const actualDep = new Date(j.actualDeparture);
