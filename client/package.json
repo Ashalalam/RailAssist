@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:components": "node test_components_suite.mjs",
+    "test:pwa": "node test_pwa_offline_suite.mjs",
+    "test": "node test_components_suite.mjs && node test_pwa_offline_suite.mjs"
   },
   "dependencies": {
     "apexcharts": "^3.48.0",

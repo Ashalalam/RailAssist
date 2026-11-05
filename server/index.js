@@ -116,6 +116,9 @@ app.post('/api/auth/register', async (req, res) => {
 // Login
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
@@ -365,6 +368,10 @@ app.post('/api/journeys', authenticateToken, async (req, res) => {
     
     // Auto-calculate TA, NDA and night duty hours
     const { actualDeparture, actualArrival, departureFromHq, arrivalAtHq } = req.body;
+
+    if (actualDeparture && actualArrival && new Date(actualArrival) <= new Date(actualDeparture)) {
+      return res.status(400).json({ message: 'Arrival time must be after departure time' });
+    }
     
     const nightDutyHours = calculateNightDutyHours(actualDeparture, actualArrival);
     const ndaAmount = nightDutyHours * rule.ndaHourlyRate;
@@ -376,6 +383,7 @@ app.post('/api/journeys', authenticateToken, async (req, res) => {
 
     const journey = await Journey.create({
       ...req.body,
+      localId: req.body.localId || `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: req.user.id,
       nightDutyHours,
       ndaAmount,
@@ -398,6 +406,11 @@ app.put('/api/journeys/:id', authenticateToken, async (req, res) => {
     const rule = await AllowanceRule.findOne({ role: req.user.role }) || { taDailyRate: 800, ndaHourlyRate: 180 };
     
     const { actualDeparture, actualArrival, departureFromHq, arrivalAtHq } = req.body;
+    const depTime = actualDeparture || journey.actualDeparture;
+    const arrTime = actualArrival || journey.actualArrival;
+    if (depTime && arrTime && new Date(arrTime) <= new Date(depTime)) {
+      return res.status(400).json({ message: 'Arrival time must be after departure time' });
+    }
     const nightDutyHours = calculateNightDutyHours(actualDeparture || journey.actualDeparture, actualArrival || journey.actualArrival);
     const ndaAmount = nightDutyHours * rule.ndaHourlyRate;
 
@@ -453,7 +466,8 @@ app.post('/api/templates', authenticateToken, async (req, res) => {
 
 app.delete('/api/templates/:id', authenticateToken, async (req, res) => {
   try {
-    await JourneyTemplate.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    const deleted = await JourneyTemplate.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!deleted) return res.status(404).json({ message: 'Template not found' });
     res.json({ message: 'Template deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

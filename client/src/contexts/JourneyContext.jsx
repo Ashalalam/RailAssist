@@ -3,7 +3,8 @@ import { useAuth } from './AuthContext';
 import { api } from '../services/api';
 import localDB from '../services/db';
 
-const JourneyContext = createContext(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const JourneyContext = createContext(null);
 
 import {
   calculateLocalNightDutyHours,

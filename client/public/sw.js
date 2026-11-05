@@ -77,16 +77,24 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((response) => {
-        // Cache newly requested assets
-        if (response.status === 200 && !reqUrl.href.includes('hot-update') && !reqUrl.href.includes('ws')) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      });
+      return fetch(event.request)
+        .then((response) => {
+          // Cache newly requested GET assets only (never cache non-GET methods)
+          if (response.status === 200 && event.request.method === 'GET' && !reqUrl.href.includes('hot-update') && !reqUrl.href.includes('ws')) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline navigation fallback: serve cached SPA shell for route requests
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html').then((shell) => shell || caches.match('/'));
+          }
+          return null;
+        });
     })
   );
 });

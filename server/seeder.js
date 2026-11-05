@@ -6,6 +6,9 @@ import Division from './models/Division.js';
 import AllowanceRule from './models/AllowanceRule.js';
 import User from './models/User.js';
 import Journey from './models/Journey.js';
+import JourneyTemplate from './models/JourneyTemplate.js';
+import ReportHistory from './models/ReportHistory.js';
+import Subscription from './models/Subscription.js';
 
 dotenv.config();
 
@@ -51,6 +54,9 @@ const seedData = async () => {
     await AllowanceRule.deleteMany();
     await User.deleteMany();
     await Journey.deleteMany();
+    await JourneyTemplate.deleteMany();
+    await ReportHistory.deleteMany();
+    await Subscription.deleteMany();
 
     console.log('Existing data cleared.');
 

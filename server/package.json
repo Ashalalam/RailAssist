@@ -11,8 +11,10 @@
     "test:timezone": "node test_timezone_suite.mjs",
     "test:regression": "node test_regression_suite.mjs",
     "test:integrity": "node test_integrity_suite.mjs",
+    "test:unit": "node test_unit_integration_suite.mjs",
+    "test:e2e": "node test_e2e_workflow_suite.mjs",
     "test:audit": "node scripts/validate_database_integrity.mjs",
-    "test": "node test_security_suite.mjs && node test_timezone_suite.mjs && node test_regression_suite.mjs && node test_integrity_suite.mjs"
+    "test": "node test_security_suite.mjs && node test_timezone_suite.mjs && node test_regression_suite.mjs && node test_integrity_suite.mjs && node test_unit_integration_suite.mjs && node test_e2e_workflow_suite.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
