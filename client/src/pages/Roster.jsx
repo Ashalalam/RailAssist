@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemoMode } from '../contexts/DemoModeContext';
 import localDB from '../services/db';
 import StationAutocomplete from '../components/StationAutocomplete';
 import { 
@@ -21,6 +22,7 @@ import {
 
 const Roster = () => {
   const { user } = useAuth();
+  const { isDemoMode, demoDutyRoster } = useDemoMode();
   const [rosters, setRosters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -53,14 +55,26 @@ const Roster = () => {
   const fetchRosters = async () => {
     try {
       setLoading(true);
+      
+      // DEMO MODE: Use synthetic roster data
+      if (isDemoMode) {
+        setRosters(demoDutyRoster || []);
+        setLoading(false);
+        return;
+      }
+      
       const response = await api.rosters.getAll(currentMonth + 1, currentYear);
-      setRosters(response.data);
+      // Handle different response formats
+      const rostersData = Array.isArray(response.data) ? response.data : (response.data?.rosters || response || []);
+      setRosters(rostersData);
       
       // Cache rosters in IndexedDB
-      const db = await localDB.init();
-      await db.clear('rosters');
-      for (const roster of response.data) {
-        await db.put('rosters', { ...roster, localId: roster._id || roster.localId });
+      if (Array.isArray(rostersData) && rostersData.length > 0) {
+        const db = await localDB.init();
+        await db.clear('rosters');
+        for (const roster of rostersData) {
+          await db.put('rosters', { ...roster, localId: roster._id || roster.localId });
+        }
       }
     } catch (err) {
       console.error('Failed to fetch rosters:', err);
@@ -76,6 +90,7 @@ const Roster = () => {
         setRosters(filteredRosters);
       } catch (dbErr) {
         console.error('Failed to load offline rosters:', dbErr);
+        setRosters([]); // Set empty array as final fallback
       }
     } finally {
       setLoading(false);
@@ -127,7 +142,7 @@ const Roster = () => {
   };
 
   const getRosterForDate = (day) => {
-    if (!day.isCurrentMonth) return [];
+    if (!day.isCurrentMonth || !Array.isArray(rosters)) return [];
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day.day).padStart(2, '0')}`;
     return rosters.filter(r => {
       const rosterDate = new Date(r.dutyDate).toISOString().substring(0, 10);
@@ -182,6 +197,12 @@ const Roster = () => {
   const handleDeleteRoster = async (id) => {
     if (!window.confirm('Are you sure you want to delete this roster entry?')) return;
     
+    // DEMO MODE: Prevent deleting real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot delete roster entries. This is synthetic data for demonstration only.');
+      return;
+    }
+    
     try {
       await api.rosters.delete(id);
       fetchRosters();
@@ -202,6 +223,12 @@ const Roster = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // DEMO MODE: Prevent creating/updating real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot create or update roster entries. This is synthetic data for demonstration only.');
+      return;
+    }
     
     try {
       const payload = {
@@ -251,6 +278,12 @@ const Roster = () => {
 
   const handleConvertToJourney = async (rosterId) => {
     if (!window.confirm('Convert this roster entry to a duty log? This will create a new journey record.')) return;
+    
+    // DEMO MODE: Prevent creating real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot convert roster to journey. This is synthetic data for demonstration only.');
+      return;
+    }
     
     try {
       await api.rosters.convert(rosterId);

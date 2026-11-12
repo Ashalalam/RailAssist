@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemoMode } from '../contexts/DemoModeContext';
 import localDB from '../services/db';
 import {
   FileText,
@@ -20,6 +21,7 @@ import {
 
 const StatementTemplates = () => {
   const { user } = useAuth();
+  const { isDemoMode } = useDemoMode();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -193,6 +195,12 @@ const StatementTemplates = () => {
   const handleDeleteTemplate = async (id) => {
     if (!window.confirm('Are you sure you want to delete this template?')) return;
 
+    // DEMO MODE: Prevent deleting real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot delete statement templates. This is synthetic data for demonstration only.');
+      return;
+    }
+
     try {
       await api.statementTemplates.delete(id);
       fetchTemplates();
@@ -203,6 +211,12 @@ const StatementTemplates = () => {
   };
 
   const handleDuplicateTemplate = async (id) => {
+    // DEMO MODE: Prevent duplicating (creates new record)
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot duplicate statement templates. This is synthetic data for demonstration only.');
+      return;
+    }
+    
     try {
       await api.statementTemplates.duplicate(id);
       fetchTemplates();
@@ -213,6 +227,12 @@ const StatementTemplates = () => {
   };
 
   const handleToggleDefault = async (template) => {
+    // DEMO MODE: Prevent updating real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot update statement templates. This is synthetic data for demonstration only.');
+      return;
+    }
+    
     try {
       await api.statementTemplates.update(template._id, {
         ...template,
@@ -227,6 +247,12 @@ const StatementTemplates = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // DEMO MODE: Prevent creating/updating real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot create or update statement templates. This is synthetic data for demonstration only.');
+      return;
+    }
 
     try {
       const payload = {
@@ -373,31 +399,63 @@ const StatementTemplates = () => {
                 <div className="mt-auto d-flex gap-1">
                   <button
                     onClick={() => handleViewTemplate(template)}
-                    className="btn btn-saas-secondary btn-sm flex-grow-1"
+                    className="btn btn-sm flex-grow-1"
+                    style={{
+                      backgroundColor: '#0EA5E9',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '8px',
+                      minWidth: '36px',
+                      minHeight: '36px'
+                    }}
                     title="View Details"
                   >
-                    <Eye size={14} />
+                    <Eye size={16} />
                   </button>
                   <button
                     onClick={() => handleEditTemplate(template)}
-                    className="btn btn-saas-secondary btn-sm flex-grow-1"
+                    className="btn btn-sm flex-grow-1"
+                    style={{
+                      backgroundColor: '#E0F2FE',
+                      color: '#0369A1',
+                      border: '1px solid #BAE6FD',
+                      padding: '8px',
+                      minWidth: '36px',
+                      minHeight: '36px'
+                    }}
                     title="Edit"
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => handleDuplicateTemplate(template._id)}
-                    className="btn btn-saas-secondary btn-sm flex-grow-1"
+                    className="btn btn-sm flex-grow-1"
+                    style={{
+                      backgroundColor: '#E0F2FE',
+                      color: '#0369A1',
+                      border: '1px solid #BAE6FD',
+                      padding: '8px',
+                      minWidth: '36px',
+                      minHeight: '36px'
+                    }}
                     title="Duplicate"
                   >
-                    <Copy size={14} />
+                    <Copy size={16} />
                   </button>
                   <button
                     onClick={() => handleDeleteTemplate(template._id)}
-                    className="btn btn-saas-secondary btn-sm text-danger"
+                    className="btn btn-sm flex-grow-1"
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      color: '#DC2626',
+                      border: '1px solid #FECACA',
+                      padding: '8px',
+                      minWidth: '36px',
+                      minHeight: '36px'
+                    }}
                     title="Delete"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>

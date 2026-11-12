@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useDemoMode } from '../contexts/DemoModeContext';
 import { 
   Search, 
   Info, 
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 const Allowances = () => {
+  const { isDemoMode, demoAllowancesMatrix } = useDemoMode();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,8 +25,16 @@ const Allowances = () => {
     const fetchRules = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/rules/all');
-        setRules(response.data);
+        
+        // DEMO MODE: Use synthetic allowances data
+        if (isDemoMode) {
+          setRules(demoAllowancesMatrix || []);
+          setLoading(false);
+          return;
+        }
+        
+        const response = await api.rules.getAll();
+        setRules(response.data || response);
       } catch (err) {
         console.error('Failed to fetch allowance rules:', err);
         setError(err.message || 'Failed to load allowance rules');
@@ -34,7 +44,7 @@ const Allowances = () => {
     };
 
     fetchRules();
-  }, []);
+  }, [isDemoMode, demoAllowancesMatrix]);
 
   // Filter and search rules
   const filteredRules = rules.filter(rule => {
@@ -166,18 +176,18 @@ const Allowances = () => {
                 {(filterType === 'all' || filterType === 'ta') && (
                   <div className="mb-3">
                     <div className="d-flex align-items-center gap-2 mb-2">
-                      <Clock size={14} className="text-success" />
-                      <h6 className="text-white mb-0" style={{ fontSize: '13px', fontWeight: '600' }}>Traveling Allowance (TA)</h6>
+                      <Clock size={14} style={{ color: '#10B981' }} />
+                      <h6 className="mb-0" style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>Traveling Allowance (TA)</h6>
                     </div>
-                    <div className="p-3 rounded bg-dark border border-secondary" style={{ backgroundColor: 'rgba(27, 34, 50, 0.2)' }}>
+                    <div className="p-3 rounded" style={{ backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD' }}>
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary-custom small">Daily Rate:</span>
-                        <span className="text-success font-weight-bold" style={{ fontSize: '16px' }}>₹{rule.taDailyRate}</span>
+                        <span style={{ fontSize: '14px', color: '#334155' }}>Daily Rate:</span>
+                        <span style={{ fontSize: '18px', fontWeight: '700', color: '#0369A1' }}>₹{rule.taDailyRate}</span>
                       </div>
-                      <div className="border-top border-secondary pt-2 mt-2">
-                        <div className="text-secondary-custom" style={{ fontSize: '11px', lineHeight: '1.5' }}>
-                          <strong className="text-white">Calculation Rules:</strong>
-                          <ul className="mb-0 mt-1 ps-3">
+                      <div style={{ borderTop: '1px solid #CBD5E1', paddingTop: '12px', marginTop: '12px' }}>
+                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                          <strong style={{ color: '#0F172A', display: 'block', marginBottom: '8px' }}>Calculation Rules:</strong>
+                          <ul className="mb-0 ps-3" style={{ color: '#334155' }}>
                             <li>≤ 6 hours absence: 30% of daily rate</li>
                             <li>6-12 hours absence: 70% of daily rate</li>
                             <li>&gt; 12 hours absence: 100% of daily rate</li>
@@ -193,18 +203,18 @@ const Allowances = () => {
                 {(filterType === 'all' || filterType === 'nda') && (
                   <div>
                     <div className="d-flex align-items-center gap-2 mb-2">
-                      <DollarSign size={14} className="text-info" />
-                      <h6 className="text-white mb-0" style={{ fontSize: '13px', fontWeight: '600' }}>Night Duty Allowance (NDA)</h6>
+                      <DollarSign size={14} style={{ color: '#3B82F6' }} />
+                      <h6 className="mb-0" style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>Night Duty Allowance (NDA)</h6>
                     </div>
-                    <div className="p-3 rounded bg-dark border border-secondary" style={{ backgroundColor: 'rgba(27, 34, 50, 0.2)' }}>
+                    <div className="p-3 rounded" style={{ backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD' }}>
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-secondary-custom small">Hourly Rate:</span>
-                        <span className="text-info font-weight-bold" style={{ fontSize: '16px' }}>₹{rule.ndaHourlyRate}/hr</span>
+                        <span style={{ fontSize: '14px', color: '#334155' }}>Hourly Rate:</span>
+                        <span style={{ fontSize: '18px', fontWeight: '700', color: '#0369A1' }}>₹{rule.ndaHourlyRate}/hr</span>
                       </div>
-                      <div className="border-top border-secondary pt-2 mt-2">
-                        <div className="text-secondary-custom" style={{ fontSize: '11px', lineHeight: '1.5' }}>
-                          <strong className="text-white">Calculation Rules:</strong>
-                          <ul className="mb-0 mt-1 ps-3">
+                      <div style={{ borderTop: '1px solid #CBD5E1', paddingTop: '12px', marginTop: '12px' }}>
+                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                          <strong style={{ color: '#0F172A', display: 'block', marginBottom: '8px' }}>Calculation Rules:</strong>
+                          <ul className="mb-0 ps-3" style={{ color: '#334155' }}>
                             <li>Night window: 22:00 to 06:00 IST</li>
                             <li>Calculated in 5-minute increments</li>
                             <li>Handles midnight-crossing shifts</li>

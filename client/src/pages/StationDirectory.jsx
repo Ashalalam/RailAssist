@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemoMode } from '../contexts/DemoModeContext';
 import { api } from '../services/api';
 import localDB from '../services/db';
 import { 
@@ -19,6 +20,7 @@ import {
 
 const StationDirectory = () => {
   const { user, isOnline } = useAuth();
+  const { isDemoMode, demoStationDirectory } = useDemoMode();
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +57,14 @@ const StationDirectory = () => {
   const loadStations = async () => {
     setLoading(true);
     try {
+      // DEMO MODE: Use synthetic station data
+      if (isDemoMode) {
+        setStations(demoStationDirectory || []);
+        setTotalPages(Math.ceil((demoStationDirectory?.length || 0) / 20));
+        setLoading(false);
+        return;
+      }
+      
       if (isOnline) {
         // Load from API
         const params = new URLSearchParams({
@@ -163,6 +173,12 @@ const StationDirectory = () => {
       return;
     }
 
+    // DEMO MODE: Prevent creating/updating real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot create or update station records. This is synthetic data for demonstration only.');
+      return;
+    }
+
     try {
       if (modalMode === 'create') {
         await api.stations.create(formData);
@@ -191,6 +207,12 @@ const StationDirectory = () => {
 
     if (!isOnline) {
       alert('Cannot delete stations while offline');
+      return;
+    }
+
+    // DEMO MODE: Prevent deleting real records
+    if (isDemoMode) {
+      alert('Demo Mode: Cannot delete station records. This is synthetic data for demonstration only.');
       return;
     }
 
@@ -404,7 +426,14 @@ const StationDirectory = () => {
                   <div className="d-flex gap-2 mt-auto">
                     <button
                       onClick={() => handleOpenModal('view', station)}
-                      className="btn btn-sm btn-saas-secondary flex-grow-1"
+                      className="btn btn-sm flex-grow-1"
+                      style={{
+                        backgroundColor: '#0EA5E9',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        padding: '8px 12px',
+                        fontWeight: '600'
+                      }}
                     >
                       View
                     </button>

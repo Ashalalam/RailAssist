@@ -3,6 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useJourneys } from '../contexts/JourneyContext';
 import InstallPrompt from '../components/InstallPrompt';
+import RecoveryModeIndicator from '../components/RecoveryModeIndicator';
+import DemoModeToggle from '../components/DemoModeToggle';
+import { useDemoMode } from '../contexts/DemoModeContext';
+import { demoDutyLogs, demoChartData } from '../data/demoData';
+import { downloadStatementPDF, shareStatementPDF } from '../utils/pdfGenerator';
 import Chart from 'react-apexcharts';
 import { motion } from 'framer-motion';
 import { 
@@ -23,8 +28,39 @@ import {
 const Dashboard = () => {
   const { user, isOnline } = useAuth();
   const { journeys, reports, syncing, triggerManualSync, loading } = useJourneys();
+  const { isDemoMode } = useDemoMode();
   const navigate = useNavigate();
   const [syncTime, setSyncTime] = useState('Just now');
+  const [downloadingStatement, setDownloadingStatement] = useState(null);
+  const [sharingStatement, setSharingStatement] = useState(null);
+  
+  // Use demo data when in demo mode
+  const displayJourneys = isDemoMode ? demoDutyLogs.map(d => ({
+    localId: d.id,
+    trainNumber: d.trainNumber,
+    trainName: d.trainName,
+    departureStation: d.departureStation,
+    arrivalStation: d.arrivalStation,
+    scheduledDeparture: d.scheduledDeparture,
+    scheduledArrival: d.scheduledArrival,
+    actualDeparture: d.actualDeparture,
+    actualArrival: d.actualArrival,
+    taAmount: d.taAmount,
+    ndaAmount: d.ndaAmount,
+    distanceKm: d.distanceKm,
+    nightDutyHours: d.nightDutyHours || 0,
+    syncStatus: d.status === 'Synced' ? 'synced' : 'pending',
+    dutyCategory: d.category,
+    notes: `Coach A1 • ${d.category} Category • Demo Entry`
+  })) : journeys;
+  
+  const displayReports = isDemoMode ? [
+    { id: 'demo-report-1', fileName: 'TA_Statement_Oct_2026.pdf', totalAmount: 48200, month: 'October 2026' },
+    { id: 'demo-report-2', fileName: 'TA_Statement_Sep_2026.pdf', totalAmount: 45800, month: 'September 2026' },
+    { id: 'demo-report-3', fileName: 'TA_Statement_Aug_2026.pdf', totalAmount: 52100, month: 'August 2026' },
+    { id: 'demo-report-4', fileName: 'TA_Statement_Jul_2026.pdf', totalAmount: 44900, month: 'July 2026' },
+    { id: 'demo-report-5', fileName: 'TA_Statement_Jun_2026.pdf', totalAmount: 47600, month: 'June 2026' }
+  ] : reports;
 
   // Dynamic greeting based on user's local time
   const getDynamicGreeting = () => {
@@ -70,25 +106,54 @@ const Dashboard = () => {
 
   // 1. Current/Today's Duty
   const { start: todayStart, end: todayEnd } = getTodayStartEnd();
-  const todayJourneys = journeys.filter(j => {
+  const todayJourneys = displayJourneys.filter(j => {
     const dep = new Date(j.actualDeparture);
     return dep >= todayStart && dep <= todayEnd;
   });
-  const currentDuty = todayJourneys.length > 0 ? todayJourneys[0] : null;
+  
+  // Demo current duty
+  const currentDuty = isDemoMode ? {
+    localId: 'demo-current',
+    trainNumber: '12951',
+    trainName: 'Mumbai Rajdhani',
+    departureStation: 'MMCT',
+    arrivalStation: 'NDLS',
+    actualDeparture: new Date().toISOString(),
+    notes: 'Coach A1 • Rajdhani Category • On Duty'
+  } : (todayJourneys.length > 0 ? todayJourneys[0] : null);
 
-  // 2. Upcoming Journeys
-  const upcomingJourneys = journeys
+  // 2. Upcoming Journeys - Demo next journey
+  const upcomingJourneys = displayJourneys
     .filter(j => new Date(j.scheduledDeparture) > todayEnd)
     .sort((a, b) => new Date(a.scheduledDeparture) - new Date(b.scheduledDeparture));
-  const nextJourney = upcomingJourneys.length > 0 ? upcomingJourneys[0] : null;
+  
+  const nextJourney = isDemoMode ? {
+    localId: 'demo-next',
+    trainNumber: '12430',
+    trainName: 'Lucknow AC SF',
+    departureStation: 'LKO',
+    arrivalStation: 'NDLS',
+    scheduledDeparture: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  } : (upcomingJourneys.length > 0 ? upcomingJourneys[0] : null);
 
   // 3. Current Month Calculations & KPI Computations (memoized)
   const currentMonthStr = new Date().toISOString().substring(0, 7); // "YYYY-MM"
   const { monthlyTA, monthlyNDA, monthlyDistance, monthlyDutyHours, unsyncedCount } = useMemo(() => {
-    const monthlyJourneys = journeys.filter(j => {
-      const dep = new Date(j.scheduledDeparture);
+    const monthlyJourneys = displayJourneys.filter(j => {
+      const dep = new Date(j.scheduledDeparture || j.actualDeparture);
       return dep.toISOString().substring(0, 7) === currentMonthStr;
     });
+
+    // Demo mode: use realistic aggregated values
+    if (isDemoMode) {
+      return {
+        monthlyTA: 18650,
+        monthlyNDA: 4120,
+        monthlyDistance: 12847,
+        monthlyDutyHours: 186.5,
+        unsyncedCount: 2
+      };
+    }
 
     const taSum = monthlyJourneys.reduce((sum, j) => sum + (j.taAmount || 0), 0);
     const ndaSum = monthlyJourneys.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
@@ -101,7 +166,7 @@ const Dashboard = () => {
       }
       return sum;
     }, 0).toFixed(1));
-    const unsynced = journeys.filter(j => j.syncStatus && j.syncStatus !== 'synced').length;
+    const unsynced = displayJourneys.filter(j => j.syncStatus && j.syncStatus !== 'synced').length;
 
     return {
       monthlyTA: taSum,
@@ -110,7 +175,7 @@ const Dashboard = () => {
       monthlyDutyHours: dutyHours,
       unsyncedCount: unsynced
     };
-  }, [journeys, currentMonthStr]);
+  }, [displayJourneys, currentMonthStr, isDemoMode]);
 
   const getFullTitle = (role) => {
     switch (role) {
@@ -142,11 +207,17 @@ const Dashboard = () => {
   };
 
   // Sort journeys for clean analytics charts (chronological order)
-  const chartJourneys = [...journeys]
-    .sort((a, b) => new Date(a.actualDeparture) - new Date(b.actualDeparture))
-    .slice(-6); // last 6 logged journeys
+  const chartJourneys = isDemoMode
+    ? demoChartData.monthlyTrend.map((item, idx) => ({
+        actualDeparture: new Date(2026, 4 + idx, 15).toISOString(),
+        taAmount: item.ta,
+        ndaAmount: item.nda
+      }))
+    : [...displayJourneys]
+        .sort((a, b) => new Date(a.actualDeparture) - new Date(b.actualDeparture))
+        .slice(-6); // last 6 logged journeys
 
-  const hasInsufficientChartData = chartJourneys.length < 2;
+  const hasInsufficientChartData = !isDemoMode && chartJourneys.length < 2;
 
   // Chart configuration
   const taChartOptions = {
@@ -224,6 +295,116 @@ const Dashboard = () => {
     name: 'Night Duty Allowance',
     data: chartJourneys.map(j => j.ndaAmount || 0)
   }];
+
+  // Handler: Download Statement PDF
+  const handleDownloadStatement = async (report) => {
+    try {
+      setDownloadingStatement(report.id);
+
+      // Extract month and year from report
+      const monthMatch = report.month?.match(/(\w+)\s+(\d{4})/);
+      const month = monthMatch ? monthMatch[1] : new Date().toLocaleString('en-US', { month: 'long' });
+      const year = monthMatch ? monthMatch[2] : new Date().getFullYear().toString();
+
+      // Filter journeys for this month/year
+      const reportMonthStr = `${year}-${String(new Date(Date.parse(`${month} 1, ${year}`)).getMonth() + 1).padStart(2, '0')}`;
+      const monthJourneys = displayJourneys.filter(j => {
+        const jDate = new Date(j.scheduledDeparture || j.actualDeparture);
+        return jDate.toISOString().substring(0, 7) === reportMonthStr;
+      });
+
+      // Structure statement data for PDF generator
+      const statementData = {
+        fileName: report.fileName,
+        totalAmount: report.totalAmount,
+        month: month,
+        year: year,
+        journeys: monthJourneys
+      };
+
+      // Structure user data for PDF generator
+      const userData = {
+        name: user?.name || user?.email || 'Railway Employee',
+        role: user?.role || 'TTE',
+        employeeId: user?.employeeId || 'Not Provided',
+        division: user?.division || 'Not Provided'
+      };
+
+      // Download the PDF
+      console.log('[DEBUG] Calling downloadStatementPDF with:', {
+        statementData,
+        userData
+      });
+      
+      const result = downloadStatementPDF(statementData, userData);
+      
+      console.log('[DEBUG] downloadStatementPDF result:', result);
+      
+      if (!result.success) {
+        console.error('[ERROR] PDF generation failed:', result.error);
+        throw new Error(result.error || 'PDF generation failed');
+      }
+      
+      console.log('[SUCCESS] PDF downloaded:', result.filename);
+      // Success feedback - no alert needed, download will trigger
+    } catch (error) {
+      console.error('[CRITICAL ERROR] Full error details:', error);
+      console.error('[CRITICAL ERROR] Error stack:', error.stack);
+      console.error('[CRITICAL ERROR] Error message:', error.message);
+      alert(`Failed to download statement: ${error.message}\n\nCheck browser console for details.`);
+    } finally {
+      setDownloadingStatement(null);
+    }
+  };
+
+  // Handler: Share Statement PDF
+  const handleShareStatement = async (report) => {
+    try {
+      setSharingStatement(report.id);
+
+      // Extract month and year from report
+      const monthMatch = report.month?.match(/(\w+)\s+(\d{4})/);
+      const month = monthMatch ? monthMatch[1] : new Date().toLocaleString('en-US', { month: 'long' });
+      const year = monthMatch ? monthMatch[2] : new Date().getFullYear().toString();
+
+      // Filter journeys for this month/year
+      const reportMonthStr = `${year}-${String(new Date(Date.parse(`${month} 1, ${year}`)).getMonth() + 1).padStart(2, '0')}`;
+      const monthJourneys = displayJourneys.filter(j => {
+        const jDate = new Date(j.scheduledDeparture || j.actualDeparture);
+        return jDate.toISOString().substring(0, 7) === reportMonthStr;
+      });
+
+      // Structure statement data for PDF generator
+      const statementData = {
+        fileName: report.fileName,
+        totalAmount: report.totalAmount,
+        month: month,
+        year: year,
+        journeys: monthJourneys
+      };
+
+      // Structure user data for PDF generator
+      const userData = {
+        name: user?.name || user?.email || 'Railway Employee',
+        role: user?.role || 'TTE',
+        employeeId: user?.employeeId || 'Not Provided',
+        division: user?.division || 'Not Provided'
+      };
+
+      // Share the PDF
+      const result = await shareStatementPDF(statementData, userData);
+      
+      if (!result.success && !result.cancelled) {
+        // Only show alert if there was an actual error (not user cancellation)
+        alert(result.error || 'Failed to share statement. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sharing statement:', error);
+      alert('Failed to share statement. Please try again.');
+    } finally {
+      setSharingStatement(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -355,6 +536,9 @@ const Dashboard = () => {
 
       {/* PWA Install Promotion */}
       <InstallPrompt />
+      
+      {/* Recovery Mode Indicator */}
+      <RecoveryModeIndicator />
 
       {/* KPI Cards Grid */}
       <motion.div 
@@ -369,8 +553,18 @@ const Dashboard = () => {
             <div>
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <span className="text-secondary-custom uppercase" style={{ fontSize: '11px', fontWeight: '600' }}>Current Duty</span>
-                <span className={`badge ${currentDuty ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-dark border border-secondary text-secondary-custom'}`} style={{ fontSize: '10px' }}>
-                  {currentDuty ? 'Active' : 'Off Duty'}
+                <span 
+                  className={`badge ${currentDuty ? 'bg-success-light' : 'bg-secondary-light'}`} 
+                  style={{ 
+                    fontSize: '10px',
+                    backgroundColor: currentDuty ? '#D1FAE5' : '#F1F5F9',
+                    color: currentDuty ? '#065F46' : '#475569',
+                    border: currentDuty ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                    padding: '4px 10px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  {currentDuty ? 'On Duty' : 'Off Duty'}
                 </span>
               </div>
               {currentDuty ? (
@@ -412,7 +606,19 @@ const Dashboard = () => {
             <div>
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <span className="text-secondary-custom uppercase" style={{ fontSize: '11px', fontWeight: '600' }}>Next Journey</span>
-                <span className="badge bg-dark border border-secondary text-secondary-custom" style={{ fontSize: '10px' }}>Timetable</span>
+                <span 
+                  className="badge" 
+                  style={{ 
+                    fontSize: '10px',
+                    backgroundColor: '#DBEAFE',
+                    color: '#1E40AF',
+                    border: '1px solid #BFDBFE',
+                    padding: '4px 10px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  Upcoming
+                </span>
               </div>
               {nextJourney ? (
                 <div>
@@ -519,9 +725,9 @@ const Dashboard = () => {
               </Link>
             </div>
 
-            {journeys.length > 0 ? (
+            {displayJourneys.length > 0 ? (
               <div className="timeline-list">
-                {journeys.slice(0, 4).map(j => {
+                {displayJourneys.slice(0, 8).map(j => {
                   const depDate = new Date(j.actualDeparture);
                   const isSynced = j.syncStatus === 'synced';
                   return (
@@ -541,7 +747,15 @@ const Dashboard = () => {
                             Shift Date: {depDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} • {depDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </small>
                           {j.notes && (
-                            <div className="p-2 rounded bg-dark border border-secondary text-secondary-custom small mt-2" style={{ fontSize: '12px', backgroundColor: 'rgba(27, 34, 50, 0.2)' }}>
+                            <div 
+                              className="p-2 rounded mt-2" 
+                              style={{ 
+                                fontSize: '12px', 
+                                backgroundColor: '#F0F9FF',
+                                color: '#334155',
+                                border: '1px solid #BFDBFE'
+                              }}
+                            >
                               {j.notes}
                             </div>
                           )}
@@ -574,25 +788,91 @@ const Dashboard = () => {
           <div className="card-saas h-100 d-flex flex-column justify-content-between">
             <div>
               <h5 className="text-white mb-3" style={{ fontSize: '16px' }}>Monthly Statements</h5>
-              {reports.slice(0, 3).length > 0 ? (
+              {displayReports.slice(0, 5).length > 0 ? (
                 <div className="d-flex flex-column gap-3">
-                  {reports.slice(0, 3).map(r => (
-                    <div key={r.id || r._id} className="p-3 rounded bg-dark border border-secondary d-flex justify-content-between align-items-center" style={{ backgroundColor: 'var(--bg-surface-secondary)' }}>
-                      <div className="min-w-0">
-                        <h6 className="text-white mb-1 text-truncate" style={{ fontSize: '13px', fontWeight: '500' }}>
+                  {displayReports.slice(0, 5).map(r => (
+                    <div 
+                      key={r.id || r._id} 
+                      className="p-3 rounded d-flex justify-content-between align-items-center" 
+                      style={{ 
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #BFDBFE',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                      }}
+                    >
+                      <div className="min-w-0 flex-grow-1">
+                        <h6 className="mb-1 text-truncate" style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>
                           <FileText size={14} className="me-1 text-primary" style={{ transform: 'translateY(-1px)' }} />
                           {r.fileName}
                         </h6>
-                        <small className="text-secondary-custom d-block text-truncate" style={{ fontSize: '11px' }}>
-                          Claims Total: <span className="text-success font-weight-medium">₹{r.totalAmount}</span>
+                        <small className="d-block text-truncate" style={{ fontSize: '11px', color: '#64748B' }}>
+                          Claims Total: <span className="font-weight-semibold" style={{ color: '#059669' }}>₹{r.totalAmount}</span>
                         </small>
                       </div>
-                      <div className="d-flex gap-1">
-                        <Link to="/reports" className="btn btn-saas-secondary p-1 px-2 border-0 bg-transparent text-secondary-custom hover-text-white">
-                          <Download size={15} />
-                        </Link>
-                        <button onClick={() => alert('Share feature available soon.')} className="btn btn-saas-secondary p-1 px-2 border-0 bg-transparent text-secondary-custom hover-text-white">
-                          <Share2 size={15} />
+                      <div className="d-flex gap-2 ms-2">
+                        <button 
+                          onClick={() => handleDownloadStatement(r)}
+                          disabled={downloadingStatement === r.id}
+                          className="btn btn-sm d-flex align-items-center justify-content-center gap-1" 
+                          style={{ 
+                            backgroundColor: downloadingStatement === r.id ? '#93C5FD' : '#0EA5E9',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s',
+                            opacity: downloadingStatement === r.id ? 0.7 : 1,
+                            cursor: downloadingStatement === r.id ? 'not-allowed' : 'pointer'
+                          }}
+                          onMouseEnter={(e) => { if (downloadingStatement !== r.id) e.currentTarget.style.backgroundColor = '#0284C7' }}
+                          onMouseLeave={(e) => { if (downloadingStatement !== r.id) e.currentTarget.style.backgroundColor = '#0EA5E9' }}
+                          title="Download PDF"
+                        >
+                          {downloadingStatement === r.id ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" />
+                              <span>Downloading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} />
+                              <span>Download</span>
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          onClick={() => handleShareStatement(r)} 
+                          disabled={sharingStatement === r.id}
+                          className="btn btn-sm d-flex align-items-center justify-content-center gap-1"
+                          style={{ 
+                            backgroundColor: sharingStatement === r.id ? '#93C5FD' : '#0EA5E9',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s',
+                            opacity: sharingStatement === r.id ? 0.7 : 1,
+                            cursor: sharingStatement === r.id ? 'not-allowed' : 'pointer'
+                          }}
+                          onMouseEnter={(e) => { if (sharingStatement !== r.id) e.currentTarget.style.backgroundColor = '#0284C7' }}
+                          onMouseLeave={(e) => { if (sharingStatement !== r.id) e.currentTarget.style.backgroundColor = '#0EA5E9' }}
+                          title="Share PDF"
+                        >
+                          {sharingStatement === r.id ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" />
+                              <span>Sharing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 size={14} />
+                              <span>Share</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -614,7 +894,14 @@ const Dashboard = () => {
               </div>
               <div className="d-flex justify-content-between mt-1">
                 <span>Log Shift Duty:</span>
-                <span className="badge bg-dark border border-secondary font-weight-semibold">Ctrl + N</span>
+                <span className="badge" style={{ 
+                  backgroundColor: '#1E293B',
+                  color: '#F1F5F9',
+                  border: '1px solid #334155',
+                  fontWeight: '600',
+                  fontSize: '10px',
+                  padding: '4px 8px'
+                }}>Ctrl + N</span>
               </div>
             </div>
           </div>
