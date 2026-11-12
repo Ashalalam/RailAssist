@@ -9,6 +9,7 @@ CRITICAL INSTRUCTIONS:
 3. Map station codes to standard codes if they are clearly recognizable.
 4. Convert dates and times to standard ISO format "YYYY-MM-DDTHH:MM". Ensure you infer the correct year based on current dates if not explicit.
 5. You MUST return confidence scores (0 to 100) for each field representing your certainty level.
+6. For dutyType, look for keywords: "SIGN ON", "SIGN OFF", "RUNNING DUTY", "TICKET CHECKING", "GUARD DUTY", "SHUNTING", "RELIEF". Return the most likely duty type as a string.
 
 JSON Response Schema:
 {
@@ -31,7 +32,9 @@ JSON Response Schema:
   "distanceKm": number or null,
   "distanceKm_confidence": number,
   "coach": "string or null",
-  "coach_confidence": number
+  "coach_confidence": number,
+  "dutyType": "string or null",
+  "dutyType_confidence": number
 }
 
 Double check that the response is pure JSON and contains NO markdown backticks or formatting outside the JSON brackets.

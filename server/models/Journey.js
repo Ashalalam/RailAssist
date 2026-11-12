@@ -68,6 +68,48 @@ const JourneySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // MR (Money Remittance) Management - Feature 02
+  mrNumber: {
+    type: String,
+    trim: true,
+    // MR tracking number for remittance
+  },
+  mrAmount: {
+    type: Number,
+    min: 0,
+    // Amount remitted in INR
+  },
+  remittedAtStation: {
+    type: String,
+    trim: true,
+    // Station code where MR was remitted
+  },
+  hasClaim: {
+    type: Boolean,
+    default: true,
+    // Whether this duty is eligible for claims (true) or no-claim status (false)
+  },
+  // End MR Management Fields
+  
+  // Feature 03: Enhanced Claim Status & Duty Categories
+  noClaimReason: {
+    type: String,
+    enum: ['NONE', 'CL', 'CR', 'HQRS', 'LAP', 'LHAP', 'NH', 'PL', 'REST', 'SCL', 'OTHER'],
+    default: 'NONE',
+    // CL = Casual Leave, CR = Compensation Rest, HQRS, LAP, LHAP, NH, PL, REST, SCL
+  },
+  dutyCategory: {
+    type: String,
+    enum: ['TICKET_CHECKING', 'ON_DUTY', 'STATION_DUTY', 'PF_CHECK', 'OTHER'],
+    default: 'TICKET_CHECKING',
+    // Railway duty type classification
+  },
+  ndaEligible: {
+    type: Boolean,
+    default: true,
+    // Whether this duty qualifies for Night Duty Allowance
+  },
+  // End Feature 03 Fields
   notes: {
     type: String,
     trim: true,

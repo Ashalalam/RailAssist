@@ -156,32 +156,32 @@ const Dashboard = () => {
       background: 'transparent',
       fontFamily: 'Inter, sans-serif'
     },
-    colors: ['#6366F1'],
+    colors: ['#0EA5E9'],
     stroke: { curve: 'smooth', width: 2 },
     fill: {
       type: 'gradient',
       gradient: {
         shadeIntensity: 1,
-        opacityFrom: 0.15,
-        opacityTo: 0.02,
+        opacityFrom: 0.2,
+        opacityTo: 0.05,
         stops: [0, 90, 100]
       }
     },
     dataLabels: { enabled: false },
-    grid: { borderColor: 'rgba(255, 255, 255, 0.04)', strokeDashArray: 3 },
+    grid: { borderColor: '#E5E7EB', strokeDashArray: 3 },
     xaxis: {
       categories: chartJourneys.map(j => new Date(j.actualDeparture).toLocaleDateString([], { month: 'short', day: 'numeric' })),
-      labels: { style: { colors: '#94A3B8', fontSize: '11px' } },
+      labels: { style: { colors: '#64748B', fontSize: '11px' } },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
     yaxis: {
       labels: {
-        style: { colors: '#94A3B8', fontSize: '11px' },
+        style: { colors: '#64748B', fontSize: '11px' },
         formatter: (val) => `₹${val}`
       }
     },
-    tooltip: { theme: 'dark' }
+    tooltip: { theme: 'light' }
   };
 
   const ndaChartOptions = {
@@ -199,20 +199,20 @@ const Dashboard = () => {
       }
     },
     dataLabels: { enabled: false },
-    grid: { borderColor: 'rgba(255, 255, 255, 0.04)', strokeDashArray: 3 },
+    grid: { borderColor: '#E5E7EB', strokeDashArray: 3 },
     xaxis: {
       categories: chartJourneys.map(j => new Date(j.actualDeparture).toLocaleDateString([], { month: 'short', day: 'numeric' })),
-      labels: { style: { colors: '#94A3B8', fontSize: '11px' } },
+      labels: { style: { colors: '#64748B', fontSize: '11px' } },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
     yaxis: {
       labels: {
-        style: { colors: '#94A3B8', fontSize: '11px' },
+        style: { colors: '#64748B', fontSize: '11px' },
         formatter: (val) => `₹${val}`
       }
     },
-    tooltip: { theme: 'dark' }
+    tooltip: { theme: 'light' }
   };
 
   const chartSeriesTA = [{
@@ -229,7 +229,7 @@ const Dashboard = () => {
     return (
       <div className="app-container">
         {/* Top Header Status Bar Skeleton */}
-        <div className="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-3">
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3" style={{ borderBottom: '1px solid #DBEAFE' }}>
           <div className="skeleton" style={{ width: '120px', height: '24px' }}></div>
           <div className="skeleton" style={{ width: '150px', height: '20px' }}></div>
         </div>
@@ -272,7 +272,7 @@ const Dashboard = () => {
               <div className="skeleton skeleton-title" style={{ width: '30%' }}></div>
               <div className="mt-4">
                 {[1, 2, 3].map(n => (
-                  <div key={n} className="mb-4 border-bottom border-secondary pb-3 last-border-none">
+                  <div key={n} className="mb-4 pb-3 last-border-none" style={{ borderBottom: '1px solid #DBEAFE' }}>
                     <div className="skeleton skeleton-title" style={{ width: '40%' }}></div>
                     <div className="skeleton skeleton-text" style={{ width: '70%' }}></div>
                   </div>

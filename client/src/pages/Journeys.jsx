@@ -375,6 +375,11 @@ const Journeys = () => {
                             Pending
                           </span>
                         )}
+                        {j.noClaimReason && j.noClaimReason !== 'NONE' && (
+                          <span className="badge bg-warning-subtle text-warning d-block mt-1" style={{ fontSize: '9px' }}>
+                            {j.noClaimReason}
+                          </span>
+                        )}
                       </td>
                       <td className="text-end">
                         <div className="d-flex gap-1 justify-content-end">

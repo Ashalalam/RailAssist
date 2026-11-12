@@ -129,7 +129,7 @@ const AIChatModal = () => {
           width: '56px',
           height: '56px',
           borderRadius: '50%',
-          background: 'var(--primary-glow)',
+          background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
           border: 'none',
           boxShadow: '0 8px 24px rgba(14, 165, 233, 0.4)',
           zIndex: 1040,
@@ -137,16 +137,16 @@ const AIChatModal = () => {
         }}
       >
         {isOpen ? (
-          <i className="bi bi-x-lg text-dark fs-4"></i>
+          <i className="bi bi-x-lg text-white fs-4"></i>
         ) : (
-          <i className="bi bi-robot text-dark fs-3"></i>
+          <i className="bi bi-robot text-white fs-3"></i>
         )}
       </button>
 
       {/* Chat Window Panel */}
       {isOpen && (
         <div 
-          className="card-saas border-info d-flex flex-column"
+          className="card-saas d-flex flex-column"
           style={{
             position: 'fixed',
             bottom: '146px',
@@ -154,36 +154,38 @@ const AIChatModal = () => {
             width: '350px',
             height: '420px',
             zIndex: 1040,
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
-            padding: 0
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.15)',
+            padding: 0,
+            border: '1px solid #DBEAFE'
           }}
         >
           {/* Header */}
-          <div className="p-3 border-bottom border-secondary d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)' }}>
-            <i className="bi bi-robot text-info fs-5"></i>
+          <div className="p-3 d-flex align-items-center gap-2" style={{ backgroundColor: '#F0F9FF', borderBottom: '1px solid #DBEAFE' }}>
+            <i className="bi bi-robot fs-5" style={{ color: '#0EA5E9' }}></i>
             <div>
-              <h6 className="mb-0 text-white" style={{ fontSize: '14px' }}>RailAssist AI Copilot</h6>
-              <small className="text-muted-custom" style={{ fontSize: '11px' }}>RAG Analytics Assistant</small>
+              <h6 className="mb-0" style={{ fontSize: '14px', color: '#0C4A6E' }}>RailAssist AI Copilot</h6>
+              <small style={{ fontSize: '11px', color: '#64748B' }}>RAG Analytics Assistant</small>
             </div>
           </div>
 
           {/* Messages Logs Area */}
-          <div className="flex-grow-1 p-3 overflow-y-auto d-flex flex-column gap-3" style={{ fontSize: '13px' }}>
+          <div className="flex-grow-1 p-3 overflow-y-auto d-flex flex-column gap-3" style={{ fontSize: '13px', backgroundColor: '#FFFFFF' }}>
             {messages.map((m, idx) => (
               <div 
                 key={idx} 
-                className={`p-2 rounded max-width-75 ${m.role === 'user' ? 'bg-primary-subtle text-primary border border-primary-subtle align-self-end' : (m.role === 'system' ? 'bg-dark border border-secondary text-info text-center align-self-center py-1 w-100' : 'bg-dark text-white border border-secondary align-self-start')}`}
+                className={`p-2 rounded max-width-75 ${m.role === 'user' ? 'align-self-end' : (m.role === 'system' ? 'text-center align-self-center py-1 w-100' : 'align-self-start')}`}
                 style={{
                   maxWidth: m.role === 'system' ? '100%' : '80%',
-                  color: m.role === 'user' ? '#0ea5e9' : (m.role === 'system' ? '#2dd4bf' : '#fff'),
-                  backgroundColor: m.role === 'user' ? 'rgba(14, 165, 233, 0.08)' : (m.role === 'system' ? 'rgba(45, 212, 191, 0.05)' : 'rgba(30, 41, 59, 0.8)')
+                  color: m.role === 'user' ? '#0C4A6E' : (m.role === 'system' ? '#0EA5E9' : '#0C4A6E'),
+                  backgroundColor: m.role === 'user' ? '#E0F2FE' : (m.role === 'system' ? '#F0F9FF' : '#FFFFFF'),
+                  border: `1px solid ${m.role === 'user' ? '#BAE6FD' : (m.role === 'system' ? '#DBEAFE' : '#E5E7EB')}`
                 }}
               >
                 {m.text}
               </div>
             ))}
             {loading && (
-              <div className="bg-dark border border-secondary text-muted-custom p-2 rounded align-self-start" style={{ maxWidth: '80%' }}>
+              <div className="p-2 rounded align-self-start" style={{ maxWidth: '80%', backgroundColor: '#F8FAFC', border: '1px solid #E5E7EB', color: '#64748B' }}>
                 <span className="spinner-grow spinner-grow-sm me-1" role="status"></span>
                 <span>Typing...</span>
               </div>
@@ -192,7 +194,7 @@ const AIChatModal = () => {
           </div>
 
           {/* Input Form Footer */}
-          <form onSubmit={handleSend} className="p-2 border-top border-secondary d-flex gap-2">
+          <form onSubmit={handleSend} className="p-2 d-flex gap-2" style={{ borderTop: '1px solid #DBEAFE', backgroundColor: '#F8FAFC' }}>
             <input 
               type="text" 
               className="form-control form-control-saas py-1" 

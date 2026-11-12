@@ -38,6 +38,64 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Extended Profile Fields - Feature 01
+  model: {
+    type: String,
+    trim: true,
+    // Conditional: For running staff (Loco Pilot, ALP), stores locomotive/traction type
+    // For other staff, stores appropriate cadre/squad information
+  },
+  zone: {
+    type: String,
+    trim: true,
+    // Railway zone (e.g., Western Railway, Central Railway)
+  },
+  branch: {
+    type: String,
+    trim: true,
+    // Department/branch within division
+  },
+  headquartersStation: {
+    type: String,
+    trim: true,
+    // HQ station code
+  },
+  payLevel: {
+    type: Number,
+    min: 1,
+    max: 14,
+    // Pay level from 1-14
+  },
+  basicPay: {
+    type: Number,
+    min: 0,
+    // Monthly basic pay amount
+  },
+  payScale: {
+    type: String,
+    trim: true,
+    // Pay scale information
+  },
+  gradePay: {
+    type: Number,
+    min: 0,
+    // Grade pay amount if applicable
+  },
+  billUnit: {
+    type: String,
+    trim: true,
+    // Bill unit number for payroll
+  },
+  dateOfAppointment: {
+    type: Date,
+    // Date of joining railway service
+  },
+  myStations: [{
+    type: String,
+    trim: true,
+    // Array of frequently used station codes
+  }],
+  // End Extended Profile Fields
   isAdmin: {
     type: Boolean,
     default: false,

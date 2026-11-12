@@ -14,6 +14,12 @@ const Analytics = lazy(() => import('./pages/Analytics.jsx'));
 const Notifications = lazy(() => import('./pages/Notifications.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Allowances = lazy(() => import('./pages/Allowances.jsx')); // Feature 04
+const Roster = lazy(() => import('./pages/Roster.jsx')); // Feature 05
+const TrainDirectory = lazy(() => import('./pages/TrainDirectory.jsx')); // Feature 06
+const StatementTemplates = lazy(() => import('./pages/StatementTemplates.jsx')); // Feature 07
+const Help = lazy(() => import('./pages/Help.jsx')); // Feature 10
+const StationDirectory = lazy(() => import('./pages/StationDirectory.jsx')); // Feature 11
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard.jsx'));
@@ -121,6 +127,12 @@ function App() {
                 <Route path="/journeys/edit/:id" element={<ProtectedRoute><JourneyForm /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                <Route path="/allowances" element={<ProtectedRoute><Allowances /></ProtectedRoute>} />
+                <Route path="/roster" element={<ProtectedRoute><Roster /></ProtectedRoute>} />
+                <Route path="/train-directory" element={<ProtectedRoute><TrainDirectory /></ProtectedRoute>} />
+                <Route path="/station-directory" element={<ProtectedRoute><StationDirectory /></ProtectedRoute>} />
+                <Route path="/statement-templates" element={<ProtectedRoute><StatementTemplates /></ProtectedRoute>} />
+                <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
                 <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

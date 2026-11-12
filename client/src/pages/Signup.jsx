@@ -56,16 +56,16 @@ const Signup = () => {
         {/* Brand Logo & Description */}
         <div className="text-center mb-4">
           <img src="/logo.svg" alt="RailAssist Logo" width="64" height="64" className="mb-3" />
-          <h2 className="text-white mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>Join RailAssist</h2>
-          <p className="text-secondary-custom small mb-0">Enterprise Logbook & Allowances Manager</p>
+          <h2 className="mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em', color: '#0C4A6E' }}>Join RailAssist</h2>
+          <p className="small mb-0" style={{ color: '#64748B' }}>Enterprise Logbook & Allowances Manager</p>
         </div>
 
         {/* Signup Card */}
         <div className="card-saas">
-          <h4 className="mb-4 text-white" style={{ fontSize: '18px', fontWeight: '600' }}>Create Account</h4>
+          <h4 className="mb-4" style={{ fontSize: '18px', fontWeight: '600', color: '#0C4A6E' }}>Create Account</h4>
 
           {error && (
-            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-error)' }}>
+            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 d-flex align-items-center gap-2" style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
               <AlertTriangle size={15} />
               <span className="small">{error}</span>
             </div>
@@ -75,7 +75,7 @@ const Signup = () => {
             <div className="mb-3">
               <label className="form-label-saas" htmlFor="name">Full Name</label>
               <div className="position-relative">
-                <User size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                <User size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                 <input
                   type="text"
                   id="name"
@@ -92,7 +92,7 @@ const Signup = () => {
             <div className="mb-3">
               <label className="form-label-saas" htmlFor="email">Official Email</label>
               <div className="position-relative">
-                <Mail size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                <Mail size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                 <input
                   type="email"
                   id="email"
@@ -109,7 +109,7 @@ const Signup = () => {
             <div className="mb-3">
               <label className="form-label-saas" htmlFor="password">Security Password</label>
               <div className="position-relative">
-                <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                <Lock size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                 <input
                   type="password"
                   id="password"
@@ -127,7 +127,7 @@ const Signup = () => {
               <div className="col-6">
                 <label className="form-label-saas" htmlFor="role">Designation</label>
                 <div className="position-relative">
-                  <Briefcase size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px', zIndex: 10 }} />
+                  <Briefcase size={14} className="position-absolute" style={{ left: '12px', top: '14px', zIndex: 10, color: '#94A3B8' }} />
                   <select
                     id="role"
                     className="form-select form-control-saas"
@@ -155,7 +155,7 @@ const Signup = () => {
               <div className="col-6">
                 <label className="form-label-saas" htmlFor="division">Division</label>
                 <div className="position-relative">
-                  <MapPin size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px', zIndex: 10 }} />
+                  <MapPin size={14} className="position-absolute" style={{ left: '12px', top: '14px', zIndex: 10, color: '#94A3B8' }} />
                   <select
                     id="division"
                     className="form-select form-control-saas"
@@ -191,7 +191,7 @@ const Signup = () => {
           </form>
 
           <div className="text-center mt-3" style={{ fontSize: '13px' }}>
-            <span className="text-secondary-custom">Already registered? </span>
+            <span style={{ color: '#64748B' }}>Already registered? </span>
             <Link to="/login" style={{ color: '#10B981', textDecoration: 'none', fontWeight: '500' }}>
               Sign In
             </Link>

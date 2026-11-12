@@ -17,3 +17,11 @@ export const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// Middleware to require admin role
+export const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};

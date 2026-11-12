@@ -87,10 +87,10 @@ const ForgotPassword = () => {
         {/* Brand Header */}
         <div className="text-center mb-4">
           <img src="/logo.svg" alt="RailAssist Logo" width="60" height="60" className="mb-3" />
-          <h2 className="text-white mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>
+          <h2 className="mb-1 font-weight-bold" style={{ fontSize: '22px', letterSpacing: '-0.02em', color: '#0C4A6E' }}>
             {activeToken ? 'Set New Password' : 'Reset Password'}
           </h2>
-          <p className="text-secondary-custom small mb-0">
+          <p className="small mb-0" style={{ color: '#64748B' }}>
             {activeToken 
               ? 'Enter and confirm your new secure credentials' 
               : 'Recover your RailAssist official portal access'}
@@ -101,24 +101,24 @@ const ForgotPassword = () => {
         <div className="card-saas">
           <div className="d-flex align-items-center gap-2 mb-3">
             {activeToken ? (
-              <KeyRound size={18} className="text-primary" />
+              <KeyRound size={18} style={{ color: '#0EA5E9' }} />
             ) : (
-              <ShieldCheck size={18} className="text-primary" />
+              <ShieldCheck size={18} style={{ color: '#0EA5E9' }} />
             )}
-            <h4 className="mb-0 text-white" style={{ fontSize: '16px', fontWeight: '600' }}>
+            <h4 className="mb-0" style={{ fontSize: '16px', fontWeight: '600', color: '#0C4A6E' }}>
               {activeToken ? 'Credential Reset' : 'Account Verification'}
             </h4>
           </div>
 
           {error && (
-            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-start gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-error)' }}>
+            <div className="alert alert-danger py-2 px-3 mb-4 fs-6 d-flex align-items-start gap-2" style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
               <AlertTriangle size={15} className="mt-1 flex-shrink-0" />
               <span className="small">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="alert alert-success py-2 px-3 mb-4 fs-6 border-0 d-flex align-items-start gap-2" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
+            <div className="alert alert-success py-2 px-3 mb-4 fs-6 d-flex align-items-start gap-2" style={{ backgroundColor: '#D1FAE5', color: '#059669', border: '1px solid #A7F3D0' }}>
               <CheckCircle2 size={15} className="mt-1 flex-shrink-0" />
               <span className="small">{success}</span>
             </div>
@@ -126,11 +126,11 @@ const ForgotPassword = () => {
 
           {/* Local Developer Verification Box when SMTP is not configured */}
           {devRecoveryUrl && (
-            <div className="p-3 mb-4 rounded border" style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
-              <span className="text-primary font-weight-semibold d-block small mb-1">
+            <div className="p-3 mb-4 rounded" style={{ backgroundColor: '#E0F2FE', border: '1px solid #BAE6FD' }}>
+              <span className="font-weight-semibold d-block small mb-1" style={{ color: '#0EA5E9' }}>
                 🛠️ Local Development Verification Mode:
               </span>
-              <p className="text-secondary-custom small mb-2" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+              <p className="small mb-2" style={{ fontSize: '11px', lineHeight: '1.4', color: '#64748B' }}>
                 Email delivery provider is unconfigured in <code>server/.env</code>. For testing, use the single-use recovery link below:
               </p>
               <a 
@@ -149,7 +149,7 @@ const ForgotPassword = () => {
               <div className="mb-3">
                 <label className="form-label-saas" htmlFor="newPassword">New Security Password</label>
                 <div className="position-relative">
-                  <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <Lock size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                   <input
                     type="password"
                     id="newPassword"
@@ -166,7 +166,7 @@ const ForgotPassword = () => {
               <div className="mb-4">
                 <label className="form-label-saas" htmlFor="confirmPassword">Confirm New Password</label>
                 <div className="position-relative">
-                  <Lock size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <Lock size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                   <input
                     type="password"
                     id="confirmPassword"
@@ -201,7 +201,7 @@ const ForgotPassword = () => {
               <div className="mb-4">
                 <label className="form-label-saas" htmlFor="email">Registered Official Email</label>
                 <div className="position-relative">
-                  <Mail size={14} className="position-absolute text-muted" style={{ left: '12px', top: '14px' }} />
+                  <Mail size={14} className="position-absolute" style={{ left: '12px', top: '14px', color: '#94A3B8' }} />
                   <input
                     type="email"
                     id="email"
@@ -213,7 +213,7 @@ const ForgotPassword = () => {
                     style={{ paddingLeft: '34px' }}
                   />
                 </div>
-                <small className="text-secondary-custom d-block mt-2" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                <small className="d-block mt-2" style={{ fontSize: '11px', lineHeight: '1.4', color: '#64748B' }}>
                   A single-use, 15-minute verification link will be issued to your registered railway address.
                 </small>
               </div>

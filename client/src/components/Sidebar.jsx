@@ -8,6 +8,7 @@ import {
   BarChart3, 
   FileSpreadsheet, 
   Train, 
+  MapPin,
   BookOpen, 
   Settings as SettingsIcon, 
   HelpCircle, 
@@ -48,27 +49,27 @@ const Sidebar = () => {
       {/* Brand header */}
       <div className="sidebar-logo d-flex align-items-center gap-2">
         <img src="/logo.svg" alt="RailAssist Logo" width="28" height="28" />
-        <h5 className="mb-0 text-white font-weight-bold" style={{ fontSize: '16px', letterSpacing: '-0.02em' }}>
-          RailAssist <span className="text-secondary-custom font-weight-normal" style={{ fontSize: '11px' }}>Enterprise</span>
+        <h5 className="mb-0 font-weight-bold" style={{ fontSize: '16px', letterSpacing: '-0.02em', color: '#0C4A6E' }}>
+          RailAssist <span className="font-weight-normal" style={{ fontSize: '11px', color: '#0EA5E9' }}>Enterprise</span>
         </h5>
       </div>
 
       {/* User profile Summary */}
       <div className="sidebar-profile">
         <div className="d-flex align-items-center gap-2 mb-2">
-          <div className="rounded-circle bg-dark border border-secondary d-flex align-items-center justify-content-center text-white font-weight-bold" style={{ width: '32px', height: '32px', fontSize: '14px', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.2) !important', color: 'var(--color-primary)' }}>
+          <div className="rounded-circle d-flex align-items-center justify-content-center font-weight-bold" style={{ width: '32px', height: '32px', fontSize: '14px', backgroundColor: '#E0F2FE', border: '2px solid #BAE6FD', color: '#0EA5E9' }}>
             {user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <h6 className="text-white mb-0 text-truncate" style={{ fontSize: '13px', fontWeight: '600' }}>{user.name}</h6>
-            <small className="text-secondary-custom d-block text-truncate" style={{ fontSize: '11px' }}>{getFullTitle(user.role)}</small>
+            <h6 className="mb-0 text-truncate" style={{ fontSize: '13px', fontWeight: '600', color: '#0C4A6E' }}>{user.name}</h6>
+            <small className="d-block text-truncate" style={{ fontSize: '11px', color: '#64748B' }}>{getFullTitle(user.role)}</small>
           </div>
         </div>
         <div className="d-flex align-items-center justify-content-between gap-1 flex-wrap mt-2">
-          <span className="badge bg-dark border border-secondary text-secondary-custom" style={{ fontSize: '10px', padding: '3px 6px' }}>
+          <span className="badge" style={{ fontSize: '10px', padding: '3px 6px', backgroundColor: '#F0F9FF', border: '1px solid #DBEAFE', color: '#64748B' }}>
             {user.division} Div • {getRailwayZone(user.division).split(' ')[0]}
           </span>
-          <span className="badge bg-dark text-info border border-info-subtle" style={{ fontSize: '9px', padding: '3px 6px', backgroundColor: 'rgba(14, 165, 233, 0.05)', color: '#0ea5e9 !important' }}>
+          <span className="badge" style={{ fontSize: '9px', padding: '3px 6px', backgroundColor: '#E0F2FE', border: '1px solid #BAE6FD', color: '#0EA5E9' }}>
             {user.subscriptionTier}
           </span>
         </div>
@@ -86,12 +87,12 @@ const Sidebar = () => {
           <span>Duty Logs</span>
         </NavLink>
 
-        <NavLink to="/calendar" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); alert('Duty Roster is under construction.'); }}>
+        <NavLink to="/roster" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <Calendar size={20} />
           <span>Duty Roster</span>
         </NavLink>
 
-        <NavLink to="/allowances" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); alert('Allowances Matrix is under construction.'); }}>
+        <NavLink to="/allowances" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <IndianRupee size={20} />
           <span>Allowances Matrix</span>
         </NavLink>
@@ -106,12 +107,17 @@ const Sidebar = () => {
           <span>Monthly Statements</span>
         </NavLink>
 
-        <NavLink to="/train-directory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); alert('Official Train Directory is under construction.'); }}>
+        <NavLink to="/train-directory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <Train size={20} />
           <span>Train Directory</span>
         </NavLink>
 
-        <NavLink to="/templates" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); alert('Statement Templates are under construction.'); }}>
+        <NavLink to="/station-directory" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <MapPin size={20} />
+          <span>Station Directory</span>
+        </NavLink>
+
+        <NavLink to="/statement-templates" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <BookOpen size={20} />
           <span>Statement Templates</span>
         </NavLink>
@@ -121,17 +127,17 @@ const Sidebar = () => {
           <span>Settings</span>
         </NavLink>
 
-        <NavLink to="/help" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); alert('RailAssist Enterprise Documentation: Contact Support Master.'); }}>
+        <NavLink to="/help" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <HelpCircle size={20} />
           <span>Help</span>
         </NavLink>
 
         {user.isAdmin && (
           <>
-            <div className="border-top border-secondary my-2"></div>
+            <div className="border-top my-2" style={{ borderColor: '#DBEAFE' }}></div>
             <NavLink to="/admin" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-              <ShieldCheck size={20} className="text-warning" />
-              <span className="text-warning">Admin Console</span>
+              <ShieldCheck size={20} style={{ color: '#F59E0B' }} />
+              <span style={{ color: '#F59E0B' }}>Admin Console</span>
             </NavLink>
           </>
         )}

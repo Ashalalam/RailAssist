@@ -1,5 +1,5 @@
 const DB_NAME = 'RailAssistDB';
-const DB_VERSION = 3;
+const DB_VERSION = 6;
 
 class IndexedDBWrapper {
   init() {
@@ -42,6 +42,21 @@ class IndexedDBWrapper {
         // Trains cache (for offline autocomplete suggestions)
         if (!db.objectStoreNames.contains('trains')) {
           db.createObjectStore('trains', { keyPath: 'number' });
+        }
+
+        // Rosters store (for duty roster management)
+        if (!db.objectStoreNames.contains('rosters')) {
+          db.createObjectStore('rosters', { keyPath: 'localId' });
+        }
+
+        // Statement Templates store (Feature 07)
+        if (!db.objectStoreNames.contains('statementTemplates')) {
+          db.createObjectStore('statementTemplates', { keyPath: 'localId' });
+        }
+
+        // Stations store (Feature 11)
+        if (!db.objectStoreNames.contains('stations')) {
+          db.createObjectStore('stations', { keyPath: 'code' });
         }
       };
 

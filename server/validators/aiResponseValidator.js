@@ -23,7 +23,9 @@ class AIResponseValidator {
         distanceKm: Number(data.distanceKm) || 0,
         distanceKm_confidence: Number(data.distanceKm_confidence) || 0,
         coach: data.coach || null,
-        coach_confidence: Number(data.coach_confidence) || 0
+        coach_confidence: Number(data.coach_confidence) || 0,
+        dutyType: data.dutyType || null,
+        dutyType_confidence: Number(data.dutyType_confidence) || 0
       };
 
       return { valid: true, data: schema };
@@ -37,10 +39,29 @@ class AIResponseValidator {
       const arr = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
       if (!Array.isArray(arr)) throw new Error('Response is not a valid JSON array');
 
-      const validated = arr.map(item => ({
-        field: String(item.field),
-        value: String(item.value)
-      })).filter(item => ['trainNumber', 'departureStation', 'arrivalStation', 'actualDeparture', 'actualArrival', 'notes'].includes(item.field));
+      const allowedFields = [
+        'trainNumber', 'trainName', 'departureStation', 'arrivalStation',
+        'scheduledDeparture', 'scheduledArrival', 'actualDeparture', 'actualArrival',
+        'departureFromHq', 'arrivalAtHq', 'distanceKm', 'delayMinutes',
+        'dutyCategory', 'hasClaim', 'noClaimReason', 'ndaEligible',
+        'mrNumber', 'mrAmount', 'remittedAtStation', 'notes'
+      ];
+
+      const validated = arr.map(item => {
+        const field = String(item.field);
+        let value = item.value;
+
+        // Type coercion for specific fields
+        if (['distanceKm', 'delayMinutes', 'mrAmount'].includes(field)) {
+          value = Number(value) || 0;
+        } else if (['hasClaim', 'ndaEligible'].includes(field)) {
+          value = Boolean(value);
+        } else {
+          value = String(value);
+        }
+
+        return { field, value };
+      }).filter(item => allowedFields.includes(item.field));
 
       return { valid: true, data: validated };
     } catch (err) {

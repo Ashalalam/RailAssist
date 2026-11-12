@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node index.js",
     "seed": "node seeder.js",
+    "seed:test:preview": "node seedTestDatabase.js",
+    "seed:test": "node seedTestDatabase.js --execute",
+    "verify:test": "node verifyTestDatabase.js",
     "test:security": "node test_security_suite.mjs",
     "test:timezone": "node test_timezone_suite.mjs",
     "test:regression": "node test_regression_suite.mjs",

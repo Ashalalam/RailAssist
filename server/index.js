@@ -12,6 +12,9 @@ import aiVoiceRouter from './routes/aiVoice.js';
 import aiChatRouter from './routes/aiChat.js';
 import aiAuditRouter from './routes/aiAudit.js';
 
+// Feature Routes
+import stationsRouter from './routes/stations.js';
+
 // Models
 import User from './models/User.js';
 import Journey from './models/Journey.js';
@@ -106,7 +109,27 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, division: user.division, isAdmin: user.isAdmin, subscriptionTier: user.subscriptionTier, subscriptionStatus: user.subscriptionStatus }
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        division: user.division,
+        model: user.model,
+        zone: user.zone,
+        branch: user.branch,
+        headquartersStation: user.headquartersStation,
+        payLevel: user.payLevel,
+        basicPay: user.basicPay,
+        payScale: user.payScale,
+        gradePay: user.gradePay,
+        billUnit: user.billUnit,
+        dateOfAppointment: user.dateOfAppointment,
+        myStations: user.myStations,
+        isAdmin: user.isAdmin,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionStatus: user.subscriptionStatus
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -131,7 +154,27 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, division: user.division, isAdmin: user.isAdmin, subscriptionTier: user.subscriptionTier, subscriptionStatus: user.subscriptionStatus }
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        division: user.division,
+        model: user.model,
+        zone: user.zone,
+        branch: user.branch,
+        headquartersStation: user.headquartersStation,
+        payLevel: user.payLevel,
+        basicPay: user.basicPay,
+        payScale: user.payScale,
+        gradePay: user.gradePay,
+        billUnit: user.billUnit,
+        dateOfAppointment: user.dateOfAppointment,
+        myStations: user.myStations,
+        isAdmin: user.isAdmin,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionStatus: user.subscriptionStatus
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -153,8 +196,22 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    // Basic fields
     user.name = req.body.name || user.name;
     user.division = req.body.division || user.division;
+
+    // Extended profile fields - Feature 01
+    if (req.body.model !== undefined) user.model = req.body.model;
+    if (req.body.zone !== undefined) user.zone = req.body.zone;
+    if (req.body.branch !== undefined) user.branch = req.body.branch;
+    if (req.body.headquartersStation !== undefined) user.headquartersStation = req.body.headquartersStation;
+    if (req.body.payLevel !== undefined) user.payLevel = req.body.payLevel;
+    if (req.body.basicPay !== undefined) user.basicPay = req.body.basicPay;
+    if (req.body.payScale !== undefined) user.payScale = req.body.payScale;
+    if (req.body.gradePay !== undefined) user.gradePay = req.body.gradePay;
+    if (req.body.billUnit !== undefined) user.billUnit = req.body.billUnit;
+    if (req.body.dateOfAppointment !== undefined) user.dateOfAppointment = req.body.dateOfAppointment;
+    if (req.body.myStations !== undefined) user.myStations = req.body.myStations;
 
     if (req.body.password) {
       user.password = req.body.password;
@@ -169,6 +226,17 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
       email: user.email,
       role: user.role,
       division: user.division,
+      model: user.model,
+      zone: user.zone,
+      branch: user.branch,
+      headquartersStation: user.headquartersStation,
+      payLevel: user.payLevel,
+      basicPay: user.basicPay,
+      payScale: user.payScale,
+      gradePay: user.gradePay,
+      billUnit: user.billUnit,
+      dateOfAppointment: user.dateOfAppointment,
+      myStations: user.myStations,
       isAdmin: user.isAdmin,
       subscriptionTier: user.subscriptionTier,
       subscriptionStatus: user.subscriptionStatus
@@ -326,9 +394,19 @@ app.get('/api/divisions', async (req, res) => {
   }
 });
 
+// Get all allowance rules (for Allowances Matrix page - Feature 04)
+app.get('/api/rules/all', authenticateToken, async (req, res) => {
+  try {
+    const rules = await AllowanceRule.find({}).sort({ role: 1 });
+    res.json(rules);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ======================== TRAIN ROUTING ========================
 
-// Search trains
+// Search trains (existing autocomplete endpoint)
 app.get('/api/trains', authenticateToken, async (req, res) => {
   const { q } = req.query;
   try {
@@ -349,6 +427,152 @@ app.get('/api/trains', authenticateToken, async (req, res) => {
   }
 });
 
+// Feature 06: Get all trains for directory (with pagination and filters)
+app.get('/api/trains/directory', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 50, 
+      search = '', 
+      trainType = '', 
+      fromStation = '', 
+      toStation = '', 
+      isActive = '' 
+    } = req.query;
+
+    const query = {};
+    
+    // Search filter
+    if (search) {
+      query.$or = [
+        { number: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Type filter
+    if (trainType) {
+      query.trainType = trainType;
+    }
+    
+    // Station filters
+    if (fromStation) {
+      query.fromStation = { $regex: fromStation, $options: 'i' };
+    }
+    if (toStation) {
+      query.toStation = { $regex: toStation, $options: 'i' };
+    }
+    
+    // Active status filter
+    if (isActive !== '') {
+      query.isActive = isActive === 'true';
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Train.countDocuments(query);
+    const trains = await Train.find(query)
+      .sort({ number: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      trains,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Feature 06: Get single train details
+app.get('/api/trains/:id', authenticateToken, async (req, res) => {
+  try {
+    const train = await Train.findById(req.params.id);
+    if (!train) return res.status(404).json({ message: 'Train not found' });
+    res.json(train);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Feature 06: Create train (admin only)
+app.post('/api/trains/directory', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const train = await Train.create({
+      ...req.body,
+      createdBy: req.user.id,
+      updatedBy: req.user.id
+    });
+
+    await logAction(req.user.id, 'TRAIN_CREATE', `Created train ${train.number} - ${train.name}`, req.ip);
+    res.status(201).json(train);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Train number already exists' });
+    }
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Feature 06: Update train (admin only)
+app.put('/api/trains/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const train = await Train.findById(req.params.id);
+    if (!train) return res.status(404).json({ message: 'Train not found' });
+
+    // Don't allow changing train number (unique constraint)
+    const { number, ...updates } = req.body;
+    
+    Object.assign(train, updates);
+    train.updatedBy = req.user.id;
+    await train.save();
+
+    await logAction(req.user.id, 'TRAIN_UPDATE', `Updated train ${train.number} - ${train.name}`, req.ip);
+    res.json(train);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Feature 06: Deactivate train (admin only)
+app.patch('/api/trains/:id/deactivate', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const train = await Train.findById(req.params.id);
+    if (!train) return res.status(404).json({ message: 'Train not found' });
+
+    train.isActive = !train.isActive;
+    train.updatedBy = req.user.id;
+    await train.save();
+
+    await logAction(
+      req.user.id, 
+      'TRAIN_STATUS_CHANGE', 
+      `${train.isActive ? 'Activated' : 'Deactivated'} train ${train.number} - ${train.name}`, 
+      req.ip
+    );
+    res.json(train);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ======================== JOURNEY ROUTES ========================
 
 // Get Journeys
@@ -356,6 +580,72 @@ app.get('/api/journeys', authenticateToken, async (req, res) => {
   try {
     const journeys = await Journey.find({ userId: req.user.id }).sort({ scheduledDeparture: -1 });
     res.json(journeys);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Feature 13: Get Financial Summary for date range
+app.get('/api/journeys/summary', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate, dutyCategory, claimStatus } = req.query;
+    
+    // Build query
+    const query = { userId: req.user.id };
+    
+    if (startDate && endDate) {
+      query.scheduledDeparture = {
+        $gte: parseAsIST(startDate),
+        $lte: parseAsIST(endDate)
+      };
+    }
+    
+    if (dutyCategory && dutyCategory !== 'ALL') {
+      query.dutyCategory = dutyCategory;
+    }
+    
+    if (claimStatus === 'ELIGIBLE') {
+      query.$or = [
+        { hasClaim: true },
+        { hasClaim: { $exists: false } }
+      ];
+      query.$or.push({ noClaimReason: 'NONE' });
+    } else if (claimStatus === 'NO_CLAIM') {
+      query.hasClaim = false;
+    }
+    
+    const journeys = await Journey.find(query).sort({ scheduledDeparture: 1 });
+    
+    // Calculate totals
+    const claimEligible = journeys.filter(j => 
+      j.hasClaim !== false && (!j.noClaimReason || j.noClaimReason === 'NONE')
+    );
+    
+    const totalTA = claimEligible.reduce((sum, j) => sum + (j.taAmount || 0), 0);
+    const totalNDA = claimEligible.reduce((sum, j) => sum + (j.ndaAmount || 0), 0);
+    const totalNightHours = claimEligible.reduce((sum, j) => sum + (j.nightDutyHours || 0), 0);
+    const totalMR = journeys.reduce((sum, j) => sum + (j.mrAmount || 0), 0);
+    const totalDistance = journeys.reduce((sum, j) => sum + (j.distanceKm || 0), 0);
+    const mrCount = journeys.filter(j => j.mrNumber && j.mrNumber.trim() !== '').length;
+    
+    const eligibleCount = claimEligible.length;
+    const noClaimCount = journeys.filter(j => j.hasClaim === false || (j.noClaimReason && j.noClaimReason !== 'NONE')).length;
+    
+    res.json({
+      journeys,
+      summary: {
+        totalJourneys: journeys.length,
+        eligibleCount,
+        noClaimCount,
+        totalTA: parseFloat(totalTA.toFixed(2)),
+        totalNDA: parseFloat(totalNDA.toFixed(2)),
+        totalNightHours: parseFloat(totalNightHours.toFixed(2)),
+        totalMR: parseFloat(totalMR.toFixed(2)),
+        totalAllowance: parseFloat((totalTA + totalNDA).toFixed(2)),
+        totalDistance: parseFloat(totalDistance.toFixed(2)),
+        mrCount
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -374,7 +664,9 @@ app.post('/api/journeys', authenticateToken, async (req, res) => {
     }
     
     const nightDutyHours = calculateNightDutyHours(actualDeparture, actualArrival);
-    const ndaAmount = nightDutyHours * rule.ndaHourlyRate;
+    // Feature 03: Respect ndaEligible flag
+    const ndaEligible = req.body.ndaEligible !== undefined ? req.body.ndaEligible : true;
+    const ndaAmount = ndaEligible ? (nightDutyHours * rule.ndaHourlyRate) : 0;
 
     // Calculate TA. Use departureFromHq/arrivalAtHq if provided; otherwise, fall back to actual travel times
     const taStart = departureFromHq || actualDeparture;
@@ -412,7 +704,9 @@ app.put('/api/journeys/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Arrival time must be after departure time' });
     }
     const nightDutyHours = calculateNightDutyHours(actualDeparture || journey.actualDeparture, actualArrival || journey.actualArrival);
-    const ndaAmount = nightDutyHours * rule.ndaHourlyRate;
+    // Feature 03: Respect ndaEligible flag
+    const ndaEligible = req.body.ndaEligible !== undefined ? req.body.ndaEligible : (journey.ndaEligible !== undefined ? journey.ndaEligible : true);
+    const ndaAmount = ndaEligible ? (nightDutyHours * rule.ndaHourlyRate) : 0;
 
     const taStart = departureFromHq || actualDeparture || journey.departureFromHq || journey.actualDeparture;
     const taEnd = arrivalAtHq || actualArrival || journey.arrivalAtHq || journey.actualArrival;
@@ -494,7 +788,9 @@ app.post('/api/journeys/sync', authenticateToken, async (req, res) => {
 
       // Re-calculate allowances authoritatively on server
       const nightDutyHours = calculateNightDutyHours(safeItem.actualDeparture, safeItem.actualArrival);
-      const ndaAmount = calculateNDA(nightDutyHours, rule.ndaHourlyRate);
+      // Feature 03: Respect ndaEligible flag from client
+      const ndaEligible = safeItem.ndaEligible !== undefined ? safeItem.ndaEligible : true;
+      const ndaAmount = ndaEligible ? calculateNDA(nightDutyHours, rule.ndaHourlyRate) : 0;
 
       const taStart = safeItem.departureFromHq || safeItem.actualDeparture;
       const taEnd = safeItem.arrivalAtHq || safeItem.actualArrival;
@@ -527,6 +823,153 @@ app.post('/api/journeys/sync', authenticateToken, async (req, res) => {
   }
 });
 
+// ======================== DUTY ROSTER ROUTES (Feature 05) ========================
+
+// Get all roster entries for current user
+app.get('/api/rosters', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let query = { userId: req.user.id };
+    
+    // Filter by month/year if provided
+    if (month && year) {
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      query.dutyDate = { $gte: startDate, $lte: endDate };
+    }
+    
+    const rosters = await Roster.find(query).sort({ dutyDate: 1 });
+    res.json(rosters);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create new roster entry
+app.post('/api/rosters', authenticateToken, async (req, res) => {
+  try {
+    const roster = await Roster.create({
+      ...req.body,
+      localId: req.body.localId || `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: req.user.id,
+      syncStatus: 'synced'
+    });
+    
+    await logAction(req.user.id, 'ROSTER_CREATE', `Created roster entry for ${roster.dutyDate.toISOString().substring(0, 10)}`, req.ip);
+    res.status(201).json(roster);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update roster entry
+app.put('/api/rosters/:id', authenticateToken, async (req, res) => {
+  try {
+    let roster = await Roster.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!roster) return res.status(404).json({ message: 'Roster entry not found' });
+    
+    Object.assign(roster, req.body);
+    await roster.save();
+    
+    await logAction(req.user.id, 'ROSTER_UPDATE', `Updated roster entry ${roster._id}`, req.ip);
+    res.json(roster);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete roster entry
+app.delete('/api/rosters/:id', authenticateToken, async (req, res) => {
+  try {
+    const roster = await Roster.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!roster) return res.status(404).json({ message: 'Roster entry not found' });
+    
+    await logAction(req.user.id, 'ROSTER_DELETE', `Deleted roster entry ${roster._id}`, req.ip);
+    res.json({ message: 'Roster entry deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Bulk sync roster entries from offline
+app.post('/api/rosters/sync', authenticateToken, async (req, res) => {
+  try {
+    const { rosters } = req.body;
+    const syncedRosters = [];
+    
+    for (const item of rosters) {
+      const { _id, userId: clientUserId, ...safeItem } = item;
+      
+      const payload = {
+        ...safeItem,
+        userId: req.user.id
+      };
+      
+      let roster = await Roster.findOne({ localId: safeItem.localId, userId: req.user.id });
+      
+      if (roster) {
+        Object.assign(roster, payload);
+        await roster.save();
+      } else {
+        roster = await Roster.create(payload);
+      }
+      syncedRosters.push(roster);
+    }
+    
+    await logAction(req.user.id, 'ROSTER_SYNC', `Synchronized ${syncedRosters.length} roster entries from offline cache`, req.ip);
+    res.json({ success: true, syncedRosters });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Convert roster to duty log
+app.post('/api/rosters/:id/convert', authenticateToken, async (req, res) => {
+  try {
+    const roster = await Roster.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!roster) return res.status(404).json({ message: 'Roster entry not found' });
+    
+    // Check if already converted
+    if (roster.journeyId) {
+      return res.status(400).json({ message: 'Roster entry already converted to duty log' });
+    }
+    
+    const rule = await AllowanceRule.findOne({ role: req.user.role }) || { taDailyRate: 800, ndaHourlyRate: 180 };
+    
+    // Create journey from roster data
+    const journey = await Journey.create({
+      userId: req.user.id,
+      trainNumber: roster.trainNumber || 'TBD',
+      trainName: roster.trainName || 'To Be Determined',
+      departureStation: roster.departureStation || 'TBD',
+      arrivalStation: roster.arrivalStation || 'TBD',
+      scheduledDeparture: roster.expectedDeparture || roster.dutyDate,
+      scheduledArrival: roster.expectedArrival || roster.dutyDate,
+      actualDeparture: roster.expectedDeparture || roster.dutyDate,
+      actualArrival: roster.expectedArrival || roster.dutyDate,
+      departureFromHq: roster.reportingTime || roster.expectedDeparture || roster.dutyDate,
+      arrivalAtHq: roster.expectedArrival || roster.dutyDate,
+      distanceKm: 0,
+      delayMinutes: 0,
+      taAmount: 0,
+      ndaAmount: 0,
+      nightDutyHours: 0,
+      dutyCategory: roster.dutyCategory || 'TICKET_CHECKING',
+      notes: `Converted from roster entry. ${roster.remarks || ''}`,
+      localId: `converted-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    });
+    
+    // Link roster to journey
+    roster.journeyId = journey._id;
+    await roster.save();
+    
+    await logAction(req.user.id, 'ROSTER_CONVERT', `Converted roster ${roster._id} to journey ${journey._id}`, req.ip);
+    res.status(201).json({ roster, journey });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // ======================== REPORT HISTORY ROUTES ========================
 
 app.get('/api/reports', authenticateToken, async (req, res) => {
@@ -551,7 +994,159 @@ app.post('/api/reports', authenticateToken, async (req, res) => {
   }
 });
 
+// ======================== STATEMENT TEMPLATES (Feature 07) ========================
+
+// Get all statement templates for authenticated user
+app.get('/api/statement-templates', authenticateToken, async (req, res) => {
+  try {
+    const templates = await StatementTemplate.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get single statement template
+app.get('/api/statement-templates/:id', authenticateToken, async (req, res) => {
+  try {
+    const template = await StatementTemplate.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!template) return res.status(404).json({ message: 'Template not found' });
+    res.json(template);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create new statement template
+app.post('/api/statement-templates', authenticateToken, async (req, res) => {
+  try {
+    const template = await StatementTemplate.create({
+      ...req.body,
+      userId: req.user.id,
+      localId: req.body.localId || `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      syncStatus: 'synced'
+    });
+    
+    await logAction(req.user.id, 'TEMPLATE_CREATE', `Created statement template: ${template.templateName}`, req.ip);
+    res.status(201).json(template);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update statement template
+app.put('/api/statement-templates/:id', authenticateToken, async (req, res) => {
+  try {
+    let template = await StatementTemplate.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!template) return res.status(404).json({ message: 'Template not found' });
+    
+    Object.assign(template, req.body);
+    await template.save();
+    
+    await logAction(req.user.id, 'TEMPLATE_UPDATE', `Updated template: ${template.templateName}`, req.ip);
+    res.json(template);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete statement template
+app.delete('/api/statement-templates/:id', authenticateToken, async (req, res) => {
+  try {
+    const template = await StatementTemplate.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!template) return res.status(404).json({ message: 'Template not found' });
+    
+    await logAction(req.user.id, 'TEMPLATE_DELETE', `Deleted template: ${template.templateName}`, req.ip);
+    res.json({ message: 'Template deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Bulk sync statement templates from offline
+app.post('/api/statement-templates/sync', authenticateToken, async (req, res) => {
+  try {
+    const { templates } = req.body;
+    const syncedTemplates = [];
+    
+    for (const item of templates) {
+      const { _id, userId: clientUserId, ...safeItem } = item;
+      
+      const payload = {
+        ...safeItem,
+        userId: req.user.id
+      };
+      
+      let template = await StatementTemplate.findOne({ localId: safeItem.localId, userId: req.user.id });
+      
+      if (template) {
+        Object.assign(template, payload);
+        await template.save();
+      } else {
+        template = await StatementTemplate.create(payload);
+      }
+      syncedTemplates.push(template);
+    }
+    
+    await logAction(req.user.id, 'TEMPLATE_SYNC', `Synchronized ${syncedTemplates.length} templates from offline cache`, req.ip);
+    res.json({ success: true, syncedTemplates });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Duplicate statement template
+app.post('/api/statement-templates/:id/duplicate', authenticateToken, async (req, res) => {
+  try {
+    const original = await StatementTemplate.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!original) return res.status(404).json({ message: 'Template not found' });
+    
+    const duplicate = await StatementTemplate.create({
+      ...original.toObject(),
+      _id: undefined,
+      templateName: `${original.templateName} (Copy)`,
+      isDefault: false,
+      localId: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: req.user.id,
+      createdAt: undefined,
+      updatedAt: undefined
+    });
+    
+    await logAction(req.user.id, 'TEMPLATE_DUPLICATE', `Duplicated template: ${original.templateName}`, req.ip);
+    res.status(201).json(duplicate);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // ======================== ADMIN PANEL API ========================
+
+// Feature 13: Reports History API
+app.get('/api/reports', authenticateToken, async (req, res) => {
+  try {
+    const reports = await ReportHistory.find({ userId: req.user.id })
+      .sort({ generatedAt: -1 })
+      .limit(50);
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/reports', authenticateToken, async (req, res) => {
+  try {
+    const report = await ReportHistory.create({
+      ...req.body,
+      userId: req.user.id,
+      generatedAt: new Date()
+    });
+    
+    await logAction(req.user.id, 'REPORT_GENERATE', `Generated ${report.reportType} report for ${report.month}`, req.ip);
+    res.status(201).json(report);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
 
 app.get('/api/admin/metrics', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -740,6 +1335,9 @@ app.use('/api/ai/ocr', aiOcrRouter);
 app.use('/api/ai/voice', aiVoiceRouter);
 app.use('/api/ai/chat', aiChatRouter);
 app.use('/api/ai/audit', aiAuditRouter);
+
+// Mount Feature Routers
+app.use('/api/stations', stationsRouter);
 
 // Default Root Route
 app.get('/', (req, res) => {
